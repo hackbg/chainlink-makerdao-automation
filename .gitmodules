@@ -1,0 +1,3 @@
+[submodule "vendor/dss-cron"]
+	path = vendor/dss-cron
+	url = https://github.com/makerdao/dss-cron

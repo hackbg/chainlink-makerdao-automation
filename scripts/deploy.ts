@@ -14,12 +14,15 @@ async function main() {
   // await hre.run('compile');
 
   // We get the contract to deploy
-  const Greeter = await ethers.getContractFactory("Greeter");
-  const greeter = await Greeter.deploy("Hello, Hardhat!");
+  const DssCronKeeper = await ethers.getContractFactory("DssCronKeeper");
+  const keeper = await DssCronKeeper.deploy(
+    "0x9566eB72e47E3E20643C0b1dfbEe04Da5c7E4732", // Sequencer on mainnet
+    "chainlink" // tbd
+  );
 
-  await greeter.deployed();
+  await keeper.deployed();
 
-  console.log("Greeter deployed to:", greeter.address);
+  console.log("DssCronKeeper deployed to:", keeper.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

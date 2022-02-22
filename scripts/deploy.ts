@@ -3,7 +3,7 @@
 //
 // When running the script with `npx hardhat run <script>` you'll find the Hardhat
 // Runtime Environment's members available in the global scope.
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 
 async function main() {
   // Hardhat always runs the compile task when running scripts with its command
@@ -13,13 +13,36 @@ async function main() {
   // manually to make sure everything is compiled
   // await hre.run('compile');
 
-  // We get the contract to deploy
-  const Greeter = await ethers.getContractFactory("Greeter");
-  const greeter = await Greeter.deploy("Hello, Hardhat!");
+  if (network.name === "mainnet") {
+    const DssCronKeeper = await ethers.getContractFactory("DssCronKeeper");
+    const keeper = await DssCronKeeper.deploy(
+      "0x9566eB72e47E3E20643C0b1dfbEe04Da5c7E4732", // Sequencer on mainnet
+      "chainlink" // tbd
+    );
+    await keeper.deployed();
+    console.log("DssCronKeeper deployed to:", keeper.address);
+  } else {
+    const Sequencer = await ethers.getContractFactory("Sequencer");
+    const sequencer = await Sequencer.deploy();
+    console.log("Sequencer deployed to:", sequencer.address);
 
-  await greeter.deployed();
+    await sequencer.file(ethers.utils.formatBytes32String("window"), 2);
+    await sequencer.addNetwork(ethers.utils.formatBytes32String("test1"));
+    await sequencer.addNetwork(ethers.utils.formatBytes32String("test2"));
 
-  console.log("Greeter deployed to:", greeter.address);
+    const SampleJob = await ethers.getContractFactory("SampleJob");
+    const job = await SampleJob.deploy(sequencer.address, 100);
+    console.log("SampleJob deployed to:", job.address);
+
+    await sequencer.addJob(job.address);
+
+    const DssCronKeeper = await ethers.getContractFactory("DssCronKeeper");
+    const keeper = await DssCronKeeper.deploy(
+      sequencer.address,
+      ethers.utils.formatBytes32String("test1")
+    );
+    console.log("DssCronKeeper deployed to:", keeper.address);
+  }
 }
 
 // We recommend this pattern to be able to use async/await everywhere

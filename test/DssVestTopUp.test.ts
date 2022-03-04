@@ -73,7 +73,6 @@ describe("DssVestTopUp", function () {
       maxDepositAmt,
       upkeepThreshold
     );
-    await topUp.setCronKeeper(admin.address);
 
     // create vest for topup contract
     const blockNum = await ethers.provider.getBlockNumber();

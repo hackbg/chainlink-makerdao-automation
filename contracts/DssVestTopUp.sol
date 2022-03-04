@@ -41,7 +41,6 @@ contract DssVestTopUp is Ownable {
     KeeperRegistryLike private immutable keeperRegistry;
     ISwapRouter private immutable swapRouter;
     address private immutable vow;
-    address private cronKeeper;
     address private paymentToken;
     address private linkToken;
     uint256 private vestId;
@@ -77,7 +76,6 @@ contract DssVestTopUp is Ownable {
     }
 
     function topUp() public {
-        require(msg.sender == cronKeeper, "not cron keeper");
         uint256 preBalance = IERC20(paymentToken).balanceOf(address(this));
         dssVest.vest(vestId);
         uint256 balance = IERC20(paymentToken).balanceOf(address(this));
@@ -114,10 +112,6 @@ contract DssVestTopUp is Ownable {
             return false;
         }
         return true;
-    }
-
-    function setCronKeeper(address _cronKeeper) external onlyOwner {
-        cronKeeper = _cronKeeper;
     }
 
     function setVestId(uint256 _vestId) external onlyOwner {

@@ -2,6 +2,8 @@
 pragma solidity ^0.8.9;
 
 import "@chainlink/contracts/src/v0.8/KeeperCompatible.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "./DssVestTopUp.sol";
 
 interface SequencerLike {
     struct WorkableJob {
@@ -19,8 +21,9 @@ interface JobLike {
     function work(bytes32 network, bytes calldata args) external;
 }
 
-contract DssCronKeeper is KeeperCompatibleInterface {
+contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
     SequencerLike private sequencer;
+    DssVestTopUp private topUp;
     bytes32 private network;
 
     constructor(address _sequencer, bytes32 _network) {
@@ -46,16 +49,35 @@ contract DssCronKeeper is KeeperCompatibleInterface {
     function checkUpkeep(bytes calldata)
         external
         override
-        returns (bool upkeepNeeded, bytes memory)
+        returns (bool, bytes memory)
     {
-        upkeepNeeded = _getPendingJob().job != address(0);
+        if (address(topUp) != address(0) && topUp.checker() == true) {
+            return (true, abi.encodeWithSelector(this.performTopUp.selector));
+        }
+        if (_getPendingJob().job != address(0)) {
+            return (true, abi.encodeWithSelector(this.performJob.selector));
+        }
+        return (false, "");
     }
 
-    function performUpkeep(bytes calldata) external override {
+    function performUpkeep(bytes calldata performData) external override {
+        (bool success, ) = address(this).delegatecall(performData);
+        require(success, "failed to perform upkeep");
+    }
+
+    function performJob() public {
         SequencerLike.WorkableJob memory wjob = _getPendingJob();
         if (wjob.job != address(0)) {
             JobLike job = JobLike(wjob.job);
             job.work(network, wjob.args);
         }
+    }
+
+    function performTopUp() public {
+        topUp.topUp();
+    }
+
+    function setTopUp(address _topUp) external onlyOwner {
+        topUp = DssVestTopUp(_topUp);
     }
 }

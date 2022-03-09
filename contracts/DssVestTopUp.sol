@@ -92,7 +92,7 @@ contract DssVestTopUp is Ownable {
                 tokenIn: paymentToken,
                 tokenOut: linkToken,
                 fee: DAI_LINK_POOL_FEE,
-                recipient: msg.sender,
+                recipient: address(this),
                 deadline: block.timestamp,
                 amountIn: amt,
                 amountOutMinimum: 0,
@@ -100,6 +100,11 @@ contract DssVestTopUp is Ownable {
             });
         uint256 amountOut = swapRouter.exactInputSingle(params);
         // Fund upkeep
+        TransferHelper.safeApprove(
+            linkToken,
+            address(keeperRegistry),
+            amountOut
+        );
         keeperRegistry.addFunds(upkeepId, uint96(amountOut));
     }
 

@@ -55,7 +55,6 @@ contract DssVestTopUp is Ownable {
         address _vow,
         address _paymentToken,
         address _keeperRegistry,
-        uint256 _upkeepId,
         address _swapRouter,
         address _linkToken,
         uint256 _minWithdrawAmt,
@@ -67,7 +66,6 @@ contract DssVestTopUp is Ownable {
         vow = _vow;
         paymentToken = _paymentToken;
         keeperRegistry = KeeperRegistryLike(_keeperRegistry);
-        upkeepId = _upkeepId;
         swapRouter = ISwapRouter(_swapRouter);
         linkToken = _linkToken;
         minWithdrawAmt = _minWithdrawAmt;
@@ -76,6 +74,7 @@ contract DssVestTopUp is Ownable {
     }
 
     function topUp() public {
+        require(vestId != 0, "vestId not set");
         uint256 preBalance = IERC20(paymentToken).balanceOf(address(this));
         dssVest.vest(vestId);
         uint256 balance = IERC20(paymentToken).balanceOf(address(this));
@@ -109,6 +108,8 @@ contract DssVestTopUp is Ownable {
     }
 
     function checker() public view returns (bool) {
+        require(upkeepId != 0, "upkeepId not set");
+        require(vestId != 0, "vestId not set");
         (, , , uint96 balance, , , ) = keeperRegistry.getUpkeep(upkeepId);
         if (balance > upkeepThreshold) {
             return false;
@@ -121,6 +122,10 @@ contract DssVestTopUp is Ownable {
 
     function setVestId(uint256 _vestId) external onlyOwner {
         vestId = _vestId;
+    }
+
+    function setUpkeepId(uint256 _upkeepId) external onlyOwner {
+        upkeepId = _upkeepId;
     }
 
     function setMinWithdrawAmt(uint256 _minWithdrawAmt) external onlyOwner {

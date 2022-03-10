@@ -6,6 +6,9 @@
 import { ethers } from "hardhat";
 import { ProcessEnv } from "../types";
 
+const { parseEther, keccak256, formatBytes32String, toUtf8Bytes } =
+  ethers.utils;
+
 const { STAGING_KEEPER_REGISTRY, STAGING_SWAP_ROUTER, STAGING_LINK_TOKEN } =
   process.env as ProcessEnv;
 
@@ -27,9 +30,9 @@ async function main() {
   const Sequencer = await ethers.getContractFactory("Sequencer");
   const sequencer = await Sequencer.deploy();
   console.log("Sequencer deployed to:", sequencer.address);
-  await sequencer.file(ethers.utils.formatBytes32String("window"), 2);
-  await sequencer.addNetwork(ethers.utils.formatBytes32String("test1"));
-  await sequencer.addNetwork(ethers.utils.formatBytes32String("test2"));
+  await sequencer.file(formatBytes32String("window"), 2);
+  await sequencer.addNetwork(formatBytes32String("test1"));
+  await sequencer.addNetwork(formatBytes32String("test2"));
   const SampleJob = await ethers.getContractFactory("SampleJob");
   const job = await SampleJob.deploy(sequencer.address, 100);
   console.log("SampleJob deployed to:", job.address);
@@ -38,7 +41,7 @@ async function main() {
   const DssCronKeeper = await ethers.getContractFactory("DssCronKeeper");
   const keeper = await DssCronKeeper.deploy(
     sequencer.address,
-    ethers.utils.formatBytes32String("test1")
+    formatBytes32String("test1")
   );
   console.log("DssCronKeeper deployed to:", keeper.address);
 
@@ -46,14 +49,14 @@ async function main() {
   const ERC20 = await ethers.getContractFactory("ERC20PresetMinterPauser");
   const paymentToken = await ERC20.deploy("Test", "TST");
   console.log("Test payment token deployed to:", paymentToken.address);
-  await paymentToken.mint(admin.address, ethers.utils.parseEther("1000000"));
+  await paymentToken.mint(admin.address, parseEther("1000000"));
   console.log("Minted 1000000 Test payment tokens to default address");
   const DssVest = await ethers.getContractFactory("DssVestMintable");
   const dssVest = await DssVest.deploy(paymentToken.address);
   console.log("DssVest deployed to:", dssVest.address);
-  await dssVest.file(ethers.utils.formatBytes32String("cap"), 1000);
+  await dssVest.file(formatBytes32String("cap"), 1000);
   await paymentToken.grantRole(
-    ethers.utils.keccak256(ethers.utils.toUtf8Bytes("MINTER_ROLE")),
+    keccak256(toUtf8Bytes("MINTER_ROLE")),
     dssVest.address
   );
   const DaiJoinMock = await ethers.getContractFactory("DaiJoinMock");
@@ -68,9 +71,9 @@ async function main() {
     STAGING_KEEPER_REGISTRY,
     STAGING_SWAP_ROUTER,
     STAGING_LINK_TOKEN,
-    ethers.utils.parseEther("0"), // no minWithdraw
-    ethers.utils.parseEther("10"),
-    ethers.utils.parseEther("7")
+    parseEther("0"), // no minWithdraw
+    parseEther("10"),
+    parseEther("7")
   );
   console.log("DssVestTopUp deployed to:", topUp.address);
 

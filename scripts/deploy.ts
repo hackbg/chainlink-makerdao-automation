@@ -6,6 +6,8 @@
 import { ethers } from "hardhat";
 import { ProcessEnv } from "../types";
 
+const { parseEther, formatBytes32String } = ethers.utils;
+
 const {
   SEQUENCER,
   NETWORK_NAME,
@@ -49,7 +51,7 @@ async function main() {
   const DssCronKeeper = await ethers.getContractFactory("DssCronKeeper");
   const keeper = await DssCronKeeper.deploy(
     SEQUENCER,
-    ethers.utils.formatBytes32String(NETWORK_NAME)
+    formatBytes32String(NETWORK_NAME)
   );
   await keeper.deployed();
   console.log("DssCronKeeper deployed to:", keeper.address);
@@ -63,9 +65,9 @@ async function main() {
     KEEPER_REGISTRY,
     SWAP_ROUTER,
     LINK_TOKEN,
-    ethers.utils.parseEther(MIN_WITHDRAW_AMT),
-    ethers.utils.parseEther(MAX_DEPOSIT_AMT),
-    ethers.utils.parseEther(UPKEEP_THRESHOLD)
+    parseEther(MIN_WITHDRAW_AMT),
+    parseEther(MAX_DEPOSIT_AMT),
+    parseEther(UPKEEP_THRESHOLD)
   );
   await topUp.deployed();
   console.log("DssVestTopUp deployed to:", topUp.address);

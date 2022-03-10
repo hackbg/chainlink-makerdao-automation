@@ -4,6 +4,10 @@
 // When running the script with `npx hardhat run <script>` you'll find the Hardhat
 // Runtime Environment's members available in the global scope.
 import { ethers } from "hardhat";
+import { ProcessEnv } from "../types";
+
+const { STAGING_KEEPER_REGISTRY, STAGING_SWAP_ROUTER, STAGING_LINK_TOKEN } =
+  process.env as ProcessEnv;
 
 async function main() {
   // Hardhat always runs the compile task when running scripts with its command
@@ -12,6 +16,11 @@ async function main() {
   // If this script is run directly using `node` you may want to call compile
   // manually to make sure everything is compiled
   // await hre.run('compile');
+
+  if (!STAGING_KEEPER_REGISTRY || !STAGING_SWAP_ROUTER || !STAGING_LINK_TOKEN) {
+    throw new Error("Missing required env variables!");
+  }
+
   const [admin] = await ethers.getSigners();
 
   // setup dss-cron
@@ -25,13 +34,14 @@ async function main() {
   const job = await SampleJob.deploy(sequencer.address, 100);
   console.log("SampleJob deployed to:", job.address);
   await sequencer.addJob(job.address);
-  // deploy DssCronKeeper
+
   const DssCronKeeper = await ethers.getContractFactory("DssCronKeeper");
   const keeper = await DssCronKeeper.deploy(
     sequencer.address,
     ethers.utils.formatBytes32String("test1")
   );
   console.log("DssCronKeeper deployed to:", keeper.address);
+
   // setup dss-vest
   const ERC20 = await ethers.getContractFactory("ERC20PresetMinterPauser");
   const paymentToken = await ERC20.deploy("Test", "TST");
@@ -48,33 +58,35 @@ async function main() {
   );
   const DaiJoinMock = await ethers.getContractFactory("DaiJoinMock");
   const daiJoinMock = await DaiJoinMock.deploy();
-  // deploy DssVestTopUp
+
   const DssVestTopUp = await ethers.getContractFactory("DssVestTopUp");
   const topUp = await DssVestTopUp.deploy(
     dssVest.address,
     daiJoinMock.address,
     ethers.constants.AddressZero, // vow
     paymentToken.address,
-    "0x4Cb093f226983713164A62138C3F718A5b595F73", // keeper registry on kovan
-    "0xE592427A0AEce92De3Edee1F18E0157C05861564", // swap router on kovan
-    "0xa36085F69e2889c224210F603D836748e7dC0088", // link token on kovan
-    0, // no minWithdraw
+    STAGING_KEEPER_REGISTRY,
+    STAGING_SWAP_ROUTER,
+    STAGING_LINK_TOKEN,
+    ethers.utils.parseEther("0"), // no minWithdraw
     ethers.utils.parseEther("10"),
     ethers.utils.parseEther("7")
   );
   console.log("DssVestTopUp deployed to:", topUp.address);
+
   await keeper.setTopUp(topUp.address);
   console.log("DssCronKeeper topUp set to:", topUp.address);
+
   // create vest for topup contract
   const blockNum = await ethers.provider.getBlockNumber();
   const block = await ethers.provider.getBlock(blockNum);
   const now = block.timestamp;
   const createVestTx = await dssVest.create(
     topUp.address,
-    100000, // total amount of vesting plan
+    10000, // total amount of vesting plan
     now,
     1000,
-    1,
+    0,
     admin.address
   );
   const createVestRc = await createVestTx.wait();

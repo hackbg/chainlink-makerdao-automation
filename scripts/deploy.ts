@@ -3,7 +3,25 @@
 //
 // When running the script with `npx hardhat run <script>` you'll find the Hardhat
 // Runtime Environment's members available in the global scope.
-import { ethers, network } from "hardhat";
+import { ethers } from "hardhat";
+import { ProcessEnv } from "../types";
+
+const { parseEther, formatBytes32String } = ethers.utils;
+
+const {
+  SEQUENCER,
+  NETWORK_NAME,
+  DSS_VEST,
+  DAI_JOIN,
+  VOW,
+  DAI_TOKEN,
+  KEEPER_REGISTRY,
+  SWAP_ROUTER,
+  LINK_TOKEN,
+  MIN_WITHDRAW_AMT,
+  MAX_DEPOSIT_AMT,
+  UPKEEP_THRESHOLD,
+} = process.env as ProcessEnv;
 
 async function main() {
   // Hardhat always runs the compile task when running scripts with its command
@@ -13,36 +31,54 @@ async function main() {
   // manually to make sure everything is compiled
   // await hre.run('compile');
 
-  if (network.name === "mainnet") {
-    const DssCronKeeper = await ethers.getContractFactory("DssCronKeeper");
-    const keeper = await DssCronKeeper.deploy(
-      "0x9566eB72e47E3E20643C0b1dfbEe04Da5c7E4732", // Sequencer on mainnet
-      "chainlink" // tbd
-    );
-    await keeper.deployed();
-    console.log("DssCronKeeper deployed to:", keeper.address);
-  } else {
-    const Sequencer = await ethers.getContractFactory("Sequencer");
-    const sequencer = await Sequencer.deploy();
-    console.log("Sequencer deployed to:", sequencer.address);
-
-    await sequencer.file(ethers.utils.formatBytes32String("window"), 2);
-    await sequencer.addNetwork(ethers.utils.formatBytes32String("test1"));
-    await sequencer.addNetwork(ethers.utils.formatBytes32String("test2"));
-
-    const SampleJob = await ethers.getContractFactory("SampleJob");
-    const job = await SampleJob.deploy(sequencer.address, 100);
-    console.log("SampleJob deployed to:", job.address);
-
-    await sequencer.addJob(job.address);
-
-    const DssCronKeeper = await ethers.getContractFactory("DssCronKeeper");
-    const keeper = await DssCronKeeper.deploy(
-      sequencer.address,
-      ethers.utils.formatBytes32String("test1")
-    );
-    console.log("DssCronKeeper deployed to:", keeper.address);
+  if (
+    !SEQUENCER ||
+    !NETWORK_NAME ||
+    !DSS_VEST ||
+    !DAI_JOIN ||
+    !VOW ||
+    !DAI_TOKEN ||
+    !KEEPER_REGISTRY ||
+    !SWAP_ROUTER ||
+    !LINK_TOKEN ||
+    !MIN_WITHDRAW_AMT ||
+    !MAX_DEPOSIT_AMT ||
+    !UPKEEP_THRESHOLD
+  ) {
+    throw new Error("Missing required env variables!");
   }
+
+  const DssCronKeeper = await ethers.getContractFactory("DssCronKeeper");
+  const keeper = await DssCronKeeper.deploy(
+    SEQUENCER,
+    formatBytes32String(NETWORK_NAME)
+  );
+  await keeper.deployed();
+  console.log("DssCronKeeper deployed to:", keeper.address);
+
+  const DssVestTopUp = await ethers.getContractFactory("DssVestTopUp");
+  const topUp = await DssVestTopUp.deploy(
+    DSS_VEST,
+    DAI_JOIN,
+    VOW,
+    DAI_TOKEN,
+    KEEPER_REGISTRY,
+    SWAP_ROUTER,
+    LINK_TOKEN,
+    parseEther(MIN_WITHDRAW_AMT),
+    parseEther(MAX_DEPOSIT_AMT),
+    parseEther(UPKEEP_THRESHOLD)
+  );
+  await topUp.deployed();
+  console.log("DssVestTopUp deployed to:", topUp.address);
+
+  keeper.setTopUp(topUp.address);
+  console.log("DssCronKeeper topUp set to:", topUp.address);
+
+  console.log("TODO: Create proposal for DssVestTopUp to MakerDAO");
+  console.log("TODO: Once approved call DssVestTopUp.setVestId");
+  console.log("TODO: Register DssCronKeeper as upkeep");
+  console.log("TODO: Once upkeep is approved call DssVestTopUp.setUpkeepId");
 }
 
 // We recommend this pattern to be able to use async/await everywhere

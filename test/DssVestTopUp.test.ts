@@ -66,13 +66,13 @@ describe("DssVestTopUp", function () {
       AddressZero, // vow
       token.address,
       keeperRegistryMock.address,
-      0, // upkeepId
       swapRouterMock.address,
       AddressZero, // LINK token
       minWithdrawAmt,
       maxDepositAmt,
       upkeepThreshold
     );
+    await topUp.setUpkeepId(1);
 
     // create vest for topup contract
     const blockNum = await ethers.provider.getBlockNumber();

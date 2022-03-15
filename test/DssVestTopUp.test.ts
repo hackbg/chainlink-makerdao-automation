@@ -112,6 +112,13 @@ describe("DssVestTopUp", function () {
 
       expect(await topUp.checker()).to.eq(true);
     });
+
+    it("should return true if balance < threshold and preBalance > minWithdrawAmt while unpaid < minWithdrawAmt", async function () {
+      await keeperRegistryMock.setUpkeepBalance(50);
+      await token.mint(topUp.address, 1000);
+
+      expect(await topUp.checker()).to.eq(true);
+    });
   });
 
   describe("topUp", function () {
@@ -152,6 +159,14 @@ describe("DssVestTopUp", function () {
 
       const upkeepInfo = await keeperRegistryMock.getUpkeep(0);
       expect(upkeepInfo.balance).to.eq(maxDepositAmt.add(initialUpkeepBalance));
+    });
+
+    it("emergency topup", async function () {
+      await token.mint(topUp.address, 100);
+      await topUp.topUp();
+
+      const upkeepInfo = await keeperRegistryMock.getUpkeep(0);
+      expect(upkeepInfo.balance).to.eq(initialUpkeepBalance.add(100));
     });
   });
 });

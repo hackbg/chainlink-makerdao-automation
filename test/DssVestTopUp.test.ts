@@ -17,7 +17,8 @@ describe("DssVestTopUp", function () {
   const minWithdrawAmt = BigNumber.from(100);
   const maxDepositAmt = BigNumber.from(1000);
   const initialUpkeepBalance = BigNumber.from(150);
-  const upkeepThreshold = BigNumber.from(100);
+  const minUpkeepBalance = BigNumber.from(100);
+  const minBalancePremium = BigNumber.from(20);
 
   let topUp: DssVestTopUp;
   let dssVest: DssVestMintable;
@@ -53,6 +54,7 @@ describe("DssVestTopUp", function () {
     );
     keeperRegistryMock = await KeeperRegistryMock.deploy();
     await keeperRegistryMock.setUpkeepBalance(initialUpkeepBalance);
+    await keeperRegistryMock.setMinBalance(minUpkeepBalance);
 
     // setup uniswap router mock
     const SwapRouterMock = await ethers.getContractFactory("SwapRouterMock");
@@ -70,7 +72,7 @@ describe("DssVestTopUp", function () {
       AddressZero, // LINK token
       minWithdrawAmt,
       maxDepositAmt,
-      upkeepThreshold
+      minBalancePremium
     );
     await topUp.setUpkeepId(1);
 
@@ -118,6 +120,13 @@ describe("DssVestTopUp", function () {
       await token.mint(topUp.address, 1000);
 
       expect(await topUp.checker()).to.eq(true);
+    });
+
+    it("should calculate upkeep threshold correctly", async function () {
+      const threshold = minUpkeepBalance.add(
+        minUpkeepBalance.mul(minBalancePremium).div(100)
+      );
+      expect(await topUp.getUpkeepThreshold()).to.eq(threshold);
     });
   });
 

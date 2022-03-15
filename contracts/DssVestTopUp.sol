@@ -31,6 +31,11 @@ interface KeeperRegistryLike {
         );
 
     function addFunds(uint256 id, uint96 amount) external;
+
+    function getMinBalanceForUpkeep(uint256 id)
+        external
+        view
+        returns (uint96 minBalance);
 }
 
 contract DssVestTopUp is Ownable {
@@ -47,7 +52,7 @@ contract DssVestTopUp is Ownable {
     uint256 private upkeepId;
     uint256 private minWithdrawAmt;
     uint256 private maxDepositAmt;
-    uint256 private upkeepThreshold;
+    uint256 private minBalancePremium;
 
     constructor(
         address _dssVest,
@@ -59,7 +64,7 @@ contract DssVestTopUp is Ownable {
         address _linkToken,
         uint256 _minWithdrawAmt,
         uint256 _maxDepositAmt,
-        uint256 _upkeepThreshold
+        uint256 _minBalancePremium
     ) {
         dssVest = DssVestLike(_dssVest);
         daiJoin = DaiJoinLike(_daiJoin);
@@ -70,7 +75,7 @@ contract DssVestTopUp is Ownable {
         linkToken = _linkToken;
         minWithdrawAmt = _minWithdrawAmt;
         maxDepositAmt = _maxDepositAmt;
-        upkeepThreshold = _upkeepThreshold;
+        minBalancePremium = _minBalancePremium;
     }
 
     function topUp() public {
@@ -116,7 +121,7 @@ contract DssVestTopUp is Ownable {
         require(upkeepId != 0, "upkeepId not set");
         require(vestId != 0, "vestId not set");
         (, , , uint96 balance, , , ) = keeperRegistry.getUpkeep(upkeepId);
-        if (upkeepThreshold < balance) {
+        if (getUpkeepThreshold() < balance) {
             return false;
         }
         if (
@@ -130,6 +135,12 @@ contract DssVestTopUp is Ownable {
 
     function getPaymentBalance() public view returns (uint256) {
         return IERC20(paymentToken).balanceOf(address(this));
+    }
+
+    function getUpkeepThreshold() public view returns (uint256) {
+        uint256 minBalance = keeperRegistry.getMinBalanceForUpkeep(upkeepId);
+        uint256 premium = (minBalance * minBalancePremium) / 100;
+        return minBalance + premium;
     }
 
     function setVestId(uint256 _vestId) external onlyOwner {
@@ -146,5 +157,12 @@ contract DssVestTopUp is Ownable {
 
     function setMaxDepositAmt(uint256 _maxDepositAmt) external onlyOwner {
         maxDepositAmt = _maxDepositAmt;
+    }
+
+    function setMinBalancePremium(uint256 _minBalancePremium)
+        external
+        onlyOwner
+    {
+        minBalancePremium = _minBalancePremium;
     }
 }

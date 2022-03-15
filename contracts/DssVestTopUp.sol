@@ -75,14 +75,19 @@ contract DssVestTopUp is Ownable {
 
     function topUp() public {
         require(vestId != 0, "vestId not set");
-        uint256 preBalance = IERC20(paymentToken).balanceOf(address(this));
-        dssVest.vest(vestId);
-        uint256 balance = IERC20(paymentToken).balanceOf(address(this));
-        uint256 amt = balance - preBalance;
-        // Return excess amount to surplus buffer
-        if (amt > maxDepositAmt) {
-            daiJoin.join(vow, amt - maxDepositAmt);
-            amt = maxDepositAmt;
+        uint256 amt;
+        uint256 preBalance = getPaymentBalance();
+        if (preBalance > 0) {
+            // Emergency topup
+            amt = preBalance;
+        } else {
+            dssVest.vest(vestId);
+            amt = getPaymentBalance();
+            // Return excess amount to surplus buffer
+            if (amt > maxDepositAmt) {
+                daiJoin.join(vow, amt - maxDepositAmt);
+                amt = maxDepositAmt;
+            }
         }
         // Swap DAI amt for LINK
         TransferHelper.safeApprove(paymentToken, address(swapRouter), amt);
@@ -111,13 +116,20 @@ contract DssVestTopUp is Ownable {
         require(upkeepId != 0, "upkeepId not set");
         require(vestId != 0, "vestId not set");
         (, , , uint96 balance, , , ) = keeperRegistry.getUpkeep(upkeepId);
-        if (balance > upkeepThreshold) {
+        if (upkeepThreshold < balance) {
             return false;
         }
-        if (dssVest.unpaid(vestId) < minWithdrawAmt) {
+        if (
+            dssVest.unpaid(vestId) < minWithdrawAmt &&
+            getPaymentBalance() < minWithdrawAmt
+        ) {
             return false;
         }
         return true;
+    }
+
+    function getPaymentBalance() public view returns (uint256) {
+        return IERC20(paymentToken).balanceOf(address(this));
     }
 
     function setVestId(uint256 _vestId) external onlyOwner {

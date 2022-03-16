@@ -27,7 +27,7 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
         override
         returns (bool, bytes memory)
     {
-        if (address(topUp) != address(0) && topUp.checker() == true) {
+        if (address(topUp) != address(0) && topUp.checker()) {
             return (true, abi.encodeWithSelector(this.performTopUp.selector));
         }
         (address job, bytes memory args) = getWorkableJob();

@@ -39,7 +39,7 @@ interface KeeperRegistryLike {
 }
 
 contract DssVestTopUp is Ownable {
-    uint24 public constant DAI_LINK_POOL_FEE = 3000;
+    uint24 public constant UNISWAP_POOL_FEE = 3000;
 
     DssVestLike private immutable dssVest;
     DaiJoinLike private immutable daiJoin;
@@ -91,6 +91,7 @@ contract DssVestTopUp is Ownable {
             // Emergency topup
             amt = preBalance;
         } else {
+            // Withdraw vested tokens
             dssVest.vest(vestId);
             amt = getPaymentBalance();
             // Return excess amount to surplus buffer
@@ -99,13 +100,13 @@ contract DssVestTopUp is Ownable {
                 amt = maxDepositAmt;
             }
         }
-        // Swap DAI amt for LINK
+        // Swap payment token amount for LINK
         TransferHelper.safeApprove(paymentToken, address(swapRouter), amt);
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
             .ExactInputSingleParams({
                 tokenIn: paymentToken,
                 tokenOut: linkToken,
-                fee: DAI_LINK_POOL_FEE,
+                fee: UNISWAP_POOL_FEE,
                 recipient: address(this),
                 deadline: block.timestamp,
                 amountIn: amt,

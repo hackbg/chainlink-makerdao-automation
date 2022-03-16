@@ -4,7 +4,7 @@ pragma solidity ^0.8.9;
 import "@chainlink/contracts/src/v0.8/KeeperCompatible.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../vendor/dss-cron/src/interfaces/IJob.sol";
-import "./DssVestTopUp.sol";
+import "./interfaces/ITopUp.sol";
 
 interface SequencerLike {
     function numJobs() external view returns (uint256);
@@ -14,7 +14,7 @@ interface SequencerLike {
 
 contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
     SequencerLike public immutable sequencer;
-    DssVestTopUp public topUp;
+    ITopUp public topUp;
     bytes32 public network;
 
     constructor(address _sequencer, bytes32 _network) {
@@ -27,12 +27,12 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
         override
         returns (bool, bytes memory)
     {
-        if (address(topUp) != address(0) && topUp.checker()) {
-            return (true, abi.encodeWithSelector(this.performTopUp.selector));
+        if (address(topUp) != address(0) && topUp.check()) {
+            return (true, abi.encodeWithSelector(this.runTopUp.selector));
         }
         (address job, bytes memory args) = getWorkableJob();
         if (job != address(0)) {
-            return (true, abi.encodeWithSelector(this.performJob.selector, job, args));
+            return (true, abi.encodeWithSelector(this.runJob.selector, job, args));
         }
         return (false, "");
     }
@@ -42,12 +42,12 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
         require(success, "failed to perform upkeep");
     }
 
-    function performJob(address job, bytes memory args) public {
+    function runJob(address job, bytes memory args) public {
         IJob(job).work(network, args);
     }
 
-    function performTopUp() public {
-        topUp.topUp();
+    function runTopUp() public {
+        topUp.run();
     }
 
     function getWorkableJob() internal returns (address, bytes memory) {
@@ -60,6 +60,6 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
     }
 
     function setTopUp(address _topUp) external onlyOwner {
-        topUp = DssVestTopUp(_topUp);
+        topUp = ITopUp(_topUp);
     }
 }

@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import "./interfaces/ITopUp.sol";
 
 interface DssVestLike {
     function vest(uint256 _id) external;
@@ -38,7 +39,7 @@ interface KeeperRegistryLike {
         returns (uint96 minBalance);
 }
 
-contract DssVestTopUp is Ownable {
+contract DssVestTopUp is ITopUp, Ownable {
     uint24 public constant UNISWAP_POOL_FEE = 3000;
 
     DssVestLike public immutable dssVest;
@@ -84,7 +85,7 @@ contract DssVestTopUp is Ownable {
         _;
     }
 
-    function topUp() public initialized {
+    function run() public initialized {
         uint256 amt;
         uint256 preBalance = getPaymentBalance();
         if (preBalance > 0) {
@@ -123,7 +124,7 @@ contract DssVestTopUp is Ownable {
         keeperRegistry.addFunds(upkeepId, uint96(amountOut));
     }
 
-    function checker() public view initialized returns (bool) {
+    function check() public view initialized returns (bool) {
         (, , , uint96 balance, , , ) = keeperRegistry.getUpkeep(upkeepId);
         if (
             getUpkeepThreshold() < balance ||

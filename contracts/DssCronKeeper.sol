@@ -3,22 +3,13 @@ pragma solidity ^0.8.9;
 
 import "@chainlink/contracts/src/v0.8/KeeperCompatible.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "../vendor/dss-cron/src/interfaces/IJob.sol";
 import "./DssVestTopUp.sol";
 
 interface SequencerLike {
-    struct WorkableJob {
-        address job;
-        bool canWork;
-        bytes args;
-    }
+    function numJobs() external view returns (uint256);
 
-    function getNextJobs(bytes32 network)
-        external
-        returns (WorkableJob[] memory);
-}
-
-interface JobLike {
-    function work(bytes32 network, bytes calldata args) external;
+    function jobAt(uint256 index) external view returns (address);
 }
 
 contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
@@ -31,21 +22,6 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
         network = _network;
     }
 
-    function _getPendingJob()
-        internal
-        returns (SequencerLike.WorkableJob memory)
-    {
-        SequencerLike.WorkableJob[] memory jobs = sequencer.getNextJobs(
-            network
-        );
-        for (uint256 i = 0; i < jobs.length; i++) {
-            SequencerLike.WorkableJob memory job = jobs[i];
-            if (job.canWork) {
-                return job;
-            }
-        }
-    }
-
     function checkUpkeep(bytes calldata)
         external
         override
@@ -54,16 +30,9 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
         if (address(topUp) != address(0) && topUp.checker() == true) {
             return (true, abi.encodeWithSelector(this.performTopUp.selector));
         }
-        SequencerLike.WorkableJob memory wjob = _getPendingJob();
-        if (wjob.job != address(0)) {
-            return (
-                true,
-                abi.encodeWithSelector(
-                    this.performJob.selector,
-                    wjob.job,
-                    wjob.args
-                )
-            );
+        (address job, bytes memory args) = getWorkableJob();
+        if (job != address(0)) {
+            return (true, abi.encodeWithSelector(this.performJob.selector, job, args));
         }
         return (false, "");
     }
@@ -74,11 +43,20 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
     }
 
     function performJob(address job, bytes memory args) public {
-        JobLike(job).work(network, args);
+        IJob(job).work(network, args);
     }
 
     function performTopUp() public {
         topUp.topUp();
+    }
+
+    function getWorkableJob() internal returns (address, bytes memory) {
+        for (uint256 i = 0; i < sequencer.numJobs(); i++) {
+            address job = sequencer.jobAt(i);
+            (bool canWork, bytes memory args) = IJob(job).workable(network);
+            if (canWork) return (job, args);
+        }
+        return (address(0), "");
     }
 
     function setTopUp(address _topUp) external onlyOwner {

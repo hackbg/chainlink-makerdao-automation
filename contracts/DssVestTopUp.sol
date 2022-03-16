@@ -78,8 +78,13 @@ contract DssVestTopUp is Ownable {
         minBalancePremium = _minBalancePremium;
     }
 
-    function topUp() public {
+    modifier initialized() {
         require(vestId != 0, "vestId not set");
+        require(upkeepId != 0, "upkeepId not set");
+        _;
+    }
+
+    function topUp() public initialized {
         uint256 amt;
         uint256 preBalance = getPaymentBalance();
         if (preBalance > 0) {
@@ -117,9 +122,7 @@ contract DssVestTopUp is Ownable {
         keeperRegistry.addFunds(upkeepId, uint96(amountOut));
     }
 
-    function checker() public view returns (bool) {
-        require(upkeepId != 0, "upkeepId not set");
-        require(vestId != 0, "vestId not set");
+    function checker() public view initialized returns (bool) {
         (, , , uint96 balance, , , ) = keeperRegistry.getUpkeep(upkeepId);
         if (getUpkeepThreshold() < balance) {
             return false;

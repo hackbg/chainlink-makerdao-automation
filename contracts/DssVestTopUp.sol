@@ -41,18 +41,18 @@ interface KeeperRegistryLike {
 contract DssVestTopUp is Ownable {
     uint24 public constant UNISWAP_POOL_FEE = 3000;
 
-    DssVestLike private immutable dssVest;
-    DaiJoinLike private immutable daiJoin;
-    KeeperRegistryLike private immutable keeperRegistry;
-    ISwapRouter private immutable swapRouter;
-    address private immutable vow;
-    address private paymentToken;
-    address private linkToken;
-    uint256 private vestId;
-    uint256 private upkeepId;
-    uint256 private minWithdrawAmt;
-    uint256 private maxDepositAmt;
-    uint256 private minBalancePremium;
+    DssVestLike public immutable dssVest;
+    DaiJoinLike public immutable daiJoin;
+    KeeperRegistryLike public immutable keeperRegistry;
+    ISwapRouter public immutable swapRouter;
+    address public immutable vow;
+    address public immutable paymentToken;
+    address public immutable linkToken;
+    uint256 public vestId;
+    uint256 public upkeepId;
+    uint256 public minWithdrawAmt;
+    uint256 public maxDepositAmt;
+    uint256 public minBalancePremium;
 
     constructor(
         address _dssVest,
@@ -163,10 +163,7 @@ contract DssVestTopUp is Ownable {
         maxDepositAmt = _maxDepositAmt;
     }
 
-    function setMinBalancePremium(uint256 _minBalancePremium)
-        public
-        onlyOwner
-    {
+    function setMinBalancePremium(uint256 _minBalancePremium) public onlyOwner {
         minBalancePremium = _minBalancePremium;
     }
 }

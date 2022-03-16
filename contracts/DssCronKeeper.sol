@@ -22,9 +22,9 @@ interface JobLike {
 }
 
 contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
-    SequencerLike private sequencer;
-    DssVestTopUp private topUp;
-    bytes32 private network;
+    SequencerLike public immutable sequencer;
+    DssVestTopUp public topUp;
+    bytes32 public network;
 
     constructor(address _sequencer, bytes32 _network) {
         sequencer = SequencerLike(_sequencer);

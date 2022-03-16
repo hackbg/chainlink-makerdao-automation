@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import "./interfaces/ITopUp.sol";
 
 interface DssVestLike {
     function vest(uint256 _id) external;
@@ -38,21 +39,21 @@ interface KeeperRegistryLike {
         returns (uint96 minBalance);
 }
 
-contract DssVestTopUp is Ownable {
-    uint24 public constant DAI_LINK_POOL_FEE = 3000;
+contract DssVestTopUp is ITopUp, Ownable {
+    uint24 public constant UNISWAP_POOL_FEE = 3000;
 
-    DssVestLike private immutable dssVest;
-    DaiJoinLike private immutable daiJoin;
-    KeeperRegistryLike private immutable keeperRegistry;
-    ISwapRouter private immutable swapRouter;
-    address private immutable vow;
-    address private paymentToken;
-    address private linkToken;
-    uint256 private vestId;
-    uint256 private upkeepId;
-    uint256 private minWithdrawAmt;
-    uint256 private maxDepositAmt;
-    uint256 private minBalancePremium;
+    DssVestLike public immutable dssVest;
+    DaiJoinLike public immutable daiJoin;
+    KeeperRegistryLike public immutable keeperRegistry;
+    ISwapRouter public immutable swapRouter;
+    address public immutable vow;
+    address public immutable paymentToken;
+    address public immutable linkToken;
+    uint256 public vestId;
+    uint256 public upkeepId;
+    uint256 public minWithdrawAmt;
+    uint256 public maxDepositAmt;
+    uint256 public minBalancePremium;
 
     constructor(
         address _dssVest,
@@ -73,19 +74,25 @@ contract DssVestTopUp is Ownable {
         keeperRegistry = KeeperRegistryLike(_keeperRegistry);
         swapRouter = ISwapRouter(_swapRouter);
         linkToken = _linkToken;
-        minWithdrawAmt = _minWithdrawAmt;
-        maxDepositAmt = _maxDepositAmt;
-        minBalancePremium = _minBalancePremium;
+        setMinWithdrawAmt(_minWithdrawAmt);
+        setMaxDepositAmt(_maxDepositAmt);
+        setMinBalancePremium(_minBalancePremium);
     }
 
-    function topUp() public {
+    modifier initialized() {
         require(vestId != 0, "vestId not set");
+        require(upkeepId != 0, "upkeepId not set");
+        _;
+    }
+
+    function run() public initialized {
         uint256 amt;
         uint256 preBalance = getPaymentBalance();
         if (preBalance > 0) {
             // Emergency topup
             amt = preBalance;
         } else {
+            // Withdraw vested tokens
             dssVest.vest(vestId);
             amt = getPaymentBalance();
             // Return excess amount to surplus buffer
@@ -94,13 +101,13 @@ contract DssVestTopUp is Ownable {
                 amt = maxDepositAmt;
             }
         }
-        // Swap DAI amt for LINK
+        // Swap payment token amount for LINK
         TransferHelper.safeApprove(paymentToken, address(swapRouter), amt);
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
             .ExactInputSingleParams({
                 tokenIn: paymentToken,
                 tokenOut: linkToken,
-                fee: DAI_LINK_POOL_FEE,
+                fee: UNISWAP_POOL_FEE,
                 recipient: address(this),
                 deadline: block.timestamp,
                 amountIn: amt,
@@ -117,16 +124,12 @@ contract DssVestTopUp is Ownable {
         keeperRegistry.addFunds(upkeepId, uint96(amountOut));
     }
 
-    function checker() public view returns (bool) {
-        require(upkeepId != 0, "upkeepId not set");
-        require(vestId != 0, "vestId not set");
+    function check() public view initialized returns (bool) {
         (, , , uint96 balance, , , ) = keeperRegistry.getUpkeep(upkeepId);
-        if (getUpkeepThreshold() < balance) {
-            return false;
-        }
         if (
-            dssVest.unpaid(vestId) < minWithdrawAmt &&
-            getPaymentBalance() < minWithdrawAmt
+            getUpkeepThreshold() < balance ||
+            (dssVest.unpaid(vestId) < minWithdrawAmt &&
+            getPaymentBalance() < minWithdrawAmt)
         ) {
             return false;
         }
@@ -151,18 +154,15 @@ contract DssVestTopUp is Ownable {
         upkeepId = _upkeepId;
     }
 
-    function setMinWithdrawAmt(uint256 _minWithdrawAmt) external onlyOwner {
+    function setMinWithdrawAmt(uint256 _minWithdrawAmt) public onlyOwner {
         minWithdrawAmt = _minWithdrawAmt;
     }
 
-    function setMaxDepositAmt(uint256 _maxDepositAmt) external onlyOwner {
+    function setMaxDepositAmt(uint256 _maxDepositAmt) public onlyOwner {
         maxDepositAmt = _maxDepositAmt;
     }
 
-    function setMinBalancePremium(uint256 _minBalancePremium)
-        external
-        onlyOwner
-    {
+    function setMinBalancePremium(uint256 _minBalancePremium) public onlyOwner {
         minBalancePremium = _minBalancePremium;
     }
 }

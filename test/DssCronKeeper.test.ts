@@ -10,16 +10,19 @@ import {
 const { HashZero } = ethers.constants;
 const { formatBytes32String } = ethers.utils;
 
-const ABI = ["function performJob()", "function performTopUp()"];
+const ABI = [
+  "function runJob(address job, bytes memory args)",
+  "function runTopUp()",
+];
 const iface = new ethers.utils.Interface(ABI);
-const performJobEncoded = iface.encodeFunctionData("performJob");
-const performTopUpEndcoded = iface.encodeFunctionData("performTopUp");
+const runTopUpEndcoded = iface.encodeFunctionData("runTopUp");
 
 describe("DssCronKeeper", function () {
   let keeper: DssCronKeeper;
   let sequencer: Sequencer;
   let job: SampleJob;
   let topUpMock: DssVestTopUpMock;
+  let runJobEncoded: string;
 
   beforeEach(async function () {
     const Sequencer = await ethers.getContractFactory("Sequencer");
@@ -30,6 +33,7 @@ describe("DssCronKeeper", function () {
     const SampleJob = await ethers.getContractFactory("SampleJob");
     job = await SampleJob.deploy(sequencer.address, 100);
     await sequencer.addJob(job.address);
+    runJobEncoded = iface.encodeFunctionData("runJob", [job.address, "0x"]);
 
     const DssCronKeeper = await ethers.getContractFactory("DssCronKeeper");
     keeper = await DssCronKeeper.deploy(
@@ -50,7 +54,7 @@ describe("DssCronKeeper", function () {
         HashZero
       );
       expect(upkeepNeeded).to.eq(true);
-      expect(perfromData).to.eq(performJobEncoded);
+      expect(perfromData).to.eq(runJobEncoded);
     });
 
     it("should perform top up if checker returns true", async function () {
@@ -59,11 +63,11 @@ describe("DssCronKeeper", function () {
         HashZero
       );
       expect(upkeepNeeded).to.eq(true);
-      expect(perfromData).to.eq(performTopUpEndcoded);
+      expect(perfromData).to.eq(runTopUpEndcoded);
     });
 
     it("should return false if no pending jobs and no need for topUp", async function () {
-      await keeper.performUpkeep(performJobEncoded);
+      await keeper.performUpkeep(runJobEncoded);
       const [upkeepNeeded] = await keeper.callStatic.checkUpkeep(HashZero);
       expect(upkeepNeeded).to.eq(false);
     });
@@ -71,20 +75,22 @@ describe("DssCronKeeper", function () {
 
   describe("performUpkeep", function () {
     it("should execute pending job", async function () {
-      await keeper.performUpkeep(performJobEncoded);
+      await keeper.performUpkeep(runJobEncoded);
       expect(await job.last()).to.be.gt(0);
     });
 
     it("should not execute not pending job", async function () {
-      await keeper.performUpkeep(performJobEncoded);
+      await keeper.performUpkeep(runJobEncoded);
       const last = await job.last();
 
-      await keeper.performUpkeep(performJobEncoded);
+      expect(keeper.performUpkeep(runJobEncoded)).to.be.revertedWith(
+        "failed to perform upkeep"
+      );
       expect(await job.last()).to.eq(last);
     });
 
     it("should execute top up", async function () {
-      const performTx = await keeper.performUpkeep(performTopUpEndcoded);
+      const performTx = await keeper.performUpkeep(runTopUpEndcoded);
       const performRc = await performTx.wait();
       const topUpEvent = performRc.events?.find(
         (e) => e.address === topUpMock.address

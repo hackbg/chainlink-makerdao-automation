@@ -54,8 +54,16 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
         if (address(topUp) != address(0) && topUp.checker() == true) {
             return (true, abi.encodeWithSelector(this.performTopUp.selector));
         }
-        if (_getPendingJob().job != address(0)) {
-            return (true, abi.encodeWithSelector(this.performJob.selector));
+        SequencerLike.WorkableJob memory wjob = _getPendingJob();
+        if (wjob.job != address(0)) {
+            return (
+                true,
+                abi.encodeWithSelector(
+                    this.performJob.selector,
+                    wjob.job,
+                    wjob.args
+                )
+            );
         }
         return (false, "");
     }
@@ -65,12 +73,8 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
         require(success, "failed to perform upkeep");
     }
 
-    function performJob() public {
-        SequencerLike.WorkableJob memory wjob = _getPendingJob();
-        if (wjob.job != address(0)) {
-            JobLike job = JobLike(wjob.job);
-            job.work(network, wjob.args);
-        }
+    function performJob(address job, bytes memory args) public {
+        JobLike(job).work(network, args);
     }
 
     function performTopUp() public {

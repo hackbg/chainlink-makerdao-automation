@@ -10,9 +10,11 @@ import {
 const { HashZero } = ethers.constants;
 const { formatBytes32String } = ethers.utils;
 
-const ABI = ["function performJob()", "function performTopUp()"];
+const ABI = [
+  "function performJob(address job, bytes memory args)",
+  "function performTopUp()",
+];
 const iface = new ethers.utils.Interface(ABI);
-const performJobEncoded = iface.encodeFunctionData("performJob");
 const performTopUpEndcoded = iface.encodeFunctionData("performTopUp");
 
 describe("DssCronKeeper", function () {
@@ -20,6 +22,7 @@ describe("DssCronKeeper", function () {
   let sequencer: Sequencer;
   let job: SampleJob;
   let topUpMock: DssVestTopUpMock;
+  let performJobEncoded: string;
 
   beforeEach(async function () {
     const Sequencer = await ethers.getContractFactory("Sequencer");
@@ -30,6 +33,10 @@ describe("DssCronKeeper", function () {
     const SampleJob = await ethers.getContractFactory("SampleJob");
     job = await SampleJob.deploy(sequencer.address, 100);
     await sequencer.addJob(job.address);
+    performJobEncoded = iface.encodeFunctionData("performJob", [
+      job.address,
+      "0x",
+    ]);
 
     const DssCronKeeper = await ethers.getContractFactory("DssCronKeeper");
     keeper = await DssCronKeeper.deploy(
@@ -79,7 +86,9 @@ describe("DssCronKeeper", function () {
       await keeper.performUpkeep(performJobEncoded);
       const last = await job.last();
 
-      await keeper.performUpkeep(performJobEncoded);
+      expect(keeper.performUpkeep(performJobEncoded)).to.be.revertedWith(
+        "failed to perform upkeep"
+      );
       expect(await job.last()).to.eq(last);
     });
 

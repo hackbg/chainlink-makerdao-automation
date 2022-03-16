@@ -73,9 +73,9 @@ contract DssVestTopUp is Ownable {
         keeperRegistry = KeeperRegistryLike(_keeperRegistry);
         swapRouter = ISwapRouter(_swapRouter);
         linkToken = _linkToken;
-        minWithdrawAmt = _minWithdrawAmt;
-        maxDepositAmt = _maxDepositAmt;
-        minBalancePremium = _minBalancePremium;
+        setMinWithdrawAmt(_minWithdrawAmt);
+        setMaxDepositAmt(_maxDepositAmt);
+        setMinBalancePremium(_minBalancePremium);
     }
 
     modifier initialized() {
@@ -154,16 +154,16 @@ contract DssVestTopUp is Ownable {
         upkeepId = _upkeepId;
     }
 
-    function setMinWithdrawAmt(uint256 _minWithdrawAmt) external onlyOwner {
+    function setMinWithdrawAmt(uint256 _minWithdrawAmt) public onlyOwner {
         minWithdrawAmt = _minWithdrawAmt;
     }
 
-    function setMaxDepositAmt(uint256 _maxDepositAmt) external onlyOwner {
+    function setMaxDepositAmt(uint256 _maxDepositAmt) public onlyOwner {
         maxDepositAmt = _maxDepositAmt;
     }
 
     function setMinBalancePremium(uint256 _minBalancePremium)
-        external
+        public
         onlyOwner
     {
         minBalancePremium = _minBalancePremium;

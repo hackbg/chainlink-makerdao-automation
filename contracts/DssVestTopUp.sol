@@ -125,12 +125,10 @@ contract DssVestTopUp is Ownable {
 
     function checker() public view initialized returns (bool) {
         (, , , uint96 balance, , , ) = keeperRegistry.getUpkeep(upkeepId);
-        if (getUpkeepThreshold() < balance) {
-            return false;
-        }
         if (
-            dssVest.unpaid(vestId) < minWithdrawAmt &&
-            getPaymentBalance() < minWithdrawAmt
+            getUpkeepThreshold() < balance ||
+            (dssVest.unpaid(vestId) < minWithdrawAmt &&
+            getPaymentBalance() < minWithdrawAmt)
         ) {
             return false;
         }

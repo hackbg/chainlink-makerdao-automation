@@ -14,13 +14,13 @@ const {
   DSS_VEST,
   DAI_JOIN,
   VOW,
-  DAI_TOKEN,
+  PAYMENT_TOKEN,
   KEEPER_REGISTRY,
   SWAP_ROUTER,
   LINK_TOKEN,
   MIN_WITHDRAW_AMT,
   MAX_DEPOSIT_AMT,
-  UPKEEP_THRESHOLD,
+  MIN_BALANCE_PREMIUM,
 } = process.env as ProcessEnv;
 
 async function main() {
@@ -37,13 +37,13 @@ async function main() {
     !DSS_VEST ||
     !DAI_JOIN ||
     !VOW ||
-    !DAI_TOKEN ||
+    !PAYMENT_TOKEN ||
     !KEEPER_REGISTRY ||
     !SWAP_ROUTER ||
     !LINK_TOKEN ||
     !MIN_WITHDRAW_AMT ||
     !MAX_DEPOSIT_AMT ||
-    !UPKEEP_THRESHOLD
+    !MIN_BALANCE_PREMIUM
   ) {
     throw new Error("Missing required env variables!");
   }
@@ -61,13 +61,13 @@ async function main() {
     DSS_VEST,
     DAI_JOIN,
     VOW,
-    DAI_TOKEN,
+    PAYMENT_TOKEN,
     KEEPER_REGISTRY,
     SWAP_ROUTER,
     LINK_TOKEN,
     parseEther(MIN_WITHDRAW_AMT),
     parseEther(MAX_DEPOSIT_AMT),
-    parseEther(UPKEEP_THRESHOLD)
+    parseEther(MIN_BALANCE_PREMIUM)
   );
   await topUp.deployed();
   console.log("DssVestTopUp deployed to:", topUp.address);

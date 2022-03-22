@@ -82,15 +82,14 @@ contract DssVestTopUp is Ownable {
         setMinBalancePremium(_minBalancePremium);
     }
 
-    modifier initialized() {
-        require(vestId != 0, "vestId not set");
-        require(upkeepId != 0, "upkeepId not set");
-        _;
+    function initialized() internal view returns (bool) {
+        return vestId != 0 && upkeepId != 0;
     }
 
     /// @notice Tops up upkeep balance with LINK
     /// @dev Called by the DssCronKeeper contract when check returns true
-    function run() public initialized {
+    function run() public {
+        require(initialized(), "not initialized");
         uint256 amt;
         uint256 preBalance = getPaymentBalance();
         if (preBalance > 0) {
@@ -133,12 +132,13 @@ contract DssVestTopUp is Ownable {
     /// @dev Called by the upkeep
     /// @return result indicating if topping up the upkeep balance is needed and
     /// if there's enough unpaid vested tokens or tokens in the contract balance
-    function check() public view initialized returns (bool) {
+    function check() public view returns (bool) {
+        require(initialized(), "not initialized");
         (, , , uint96 balance, , , ) = keeperRegistry.getUpkeep(upkeepId);
         if (
             getUpkeepThreshold() < balance ||
             (dssVest.unpaid(vestId) < minWithdrawAmt &&
-            getPaymentBalance() < minWithdrawAmt)
+                getPaymentBalance() < minWithdrawAmt)
         ) {
             return false;
         }

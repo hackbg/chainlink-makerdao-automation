@@ -1,46 +1,73 @@
-# Advanced Sample Hardhat Project
+# Chainlink Keeper Contracts for MakerDAO
 
-This project demonstrates an advanced Hardhat use case, integrating other tools commonly used alongside Hardhat in the ecosystem.
+[Chainlink Keepers](https://docs.chain.link/docs/chainlink-keepers/introduction) implementation for [MIP63: Maker Keeper Network](https://forum.makerdao.com/t/mip63-maker-keeper-network/12091).
 
-The project comes with a sample contract, a test for that contract, a sample script that deploys that contract, and an example of a task implementation, which simply lists the available accounts. It also comes with a variety of other tools, preconfigured to work with the project code.
+Maintains Maker protocol by poking oracles, liquidating vaults, managing the autoline, managing D3Ms, etc.
 
-Try running some of the following tasks:
+## Overview
 
-```shell
-npx hardhat accounts
-npx hardhat compile
-npx hardhat clean
-npx hardhat test
-npx hardhat node
-npx hardhat help
-REPORT_GAS=true npx hardhat test
-npx hardhat coverage
-npx hardhat run scripts/deploy.ts
-TS_NODE_FILES=true npx ts-node scripts/deploy.ts
-npx eslint '**/*.{js,ts}'
-npx eslint '**/*.{js,ts}' --fix
-npx prettier '**/*.{json,sol,md}' --check
-npx prettier '**/*.{json,sol,md}' --write
-npx solhint 'contracts/**/*.sol'
-npx solhint 'contracts/**/*.sol' --fix
+![Architecture](/docs/overview.png)
+
+## Setup
+
+Clone the repo and install all dependencies:
+
+```bash
+git clone git@github.com:hackbg/chainlink-makerdao-keeper.git
+cd chainlink-makerdao-keeper
+
+git submodule init
+git submodule update
+
+npm install
 ```
 
-# Etherscan verification
+Copy the `.env.example` to `.env` file and make sure you've set all of the following:
 
-To try out Etherscan verification, you first need to deploy a contract to an Ethereum network that's supported by Etherscan, such as Ropsten.
+| Name                      | Description                                                                                                                                                                                        |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RPC_URL`                 | URL of the node                                                                                                                                                                                    |
+| `PRIVATE_KEY`             | Controls which account Hardhat uses                                                                                                                                                                |
+| `ETHERSCAN_API_KEY`       | Required to verify contract code on Etherscan                                                                                                                                                      |
+| `SEQUENCER`               | Address of [Sequencer](https://github.com/makerdao/dss-cron/)                                                                                                                                      |
+| `NETWORK_NAME`            | Short name from the Sequencer network registry                                                                                                                                                     |
+| `DSS_VEST`                | Address of [DssVest](https://github.com/makerdao/dss-vest)                                                                                                                                         |
+| `DAI_JOIN`                | Address of [DaiJoin](https://docs.makerdao.com/smart-contract-modules/collateral-module/join-detailed-documentation#3-key-mechanisms-and-concepts)                                                 |
+| `VOW`                     | Address of [Vow](https://docs.makerdao.com/smart-contract-modules/system-stabilizer-module/vow-detailed-documentation)                                                                             |
+| `PAYMENT_TOKEN`           | Address of ERC-20 token used for payment in DssVest, like DAI                                                                                                                                      |
+| `KEEPER_REGISTRY`         | Address of KeeperRegistry                                                                                                                                                                          |
+| `SWAP_ROUTER`             | Address of Uniswap V3 Router                                                                                                                                                                       |
+| `LINK_TOKEN`              | Address of ERC-20 token used for payment in KeeperRegistry, like LINK                                                                                                                              |
+| `MIN_WITHDRAW_AMT`        | Minimum amount of `PAYMENT_TOKOEN` required to trigger top up                                                                                                                                      |
+| `MAX_DEPOSIT_AMT`         | Maximum amount of `PAYMENT_TOKOEN` allowed to fund an upkeep. The excess amount is returned to the [Surplus Buffer](https://manual.makerdao.com/parameter-index/core/param-system-surplus-buffer). |
+| `MIN_BALANCE_PREMIUM`     | Premium on top of the minimum balance to prevent upkeep from going inactive                                                                                                                        |
+| `STAGING_KEEPER_REGISTRY` | Address of KeeperRegistry on testnet for staging environment                                                                                                                                       |
+| `STAGING_SWAP_ROUTER`     | Address of Uniswap V3 Router on testnet                                                                                                                                                            |
+| `STAGING_LINK_TOKEN`      | Address of ERC-20 token like LINK on testnet                                                                                                                                                       |
 
-In this project, copy the .env.example file to a file named .env, and then edit it to fill in the details. Enter your Etherscan API key, your Ropsten node URL (eg from Alchemy), and the private key of the account which will send the deployment transaction. With a valid .env file in place, first deploy your contract:
+## Test
 
-```shell
-hardhat run --network ropsten scripts/sample-script.ts
+Run unit tests on the local Hardhat network:
+
+```bash
+npm run test
 ```
 
-Then, copy the deployment address and paste it in to replace `DEPLOYED_CONTRACT_ADDRESS` in this command:
+To test on a live keeper network, deploy a staging environment on a testnet like Kovan:
 
-```shell
-npx hardhat verify --network ropsten DEPLOYED_CONTRACT_ADDRESS "Hello, Hardhat!"
+```bash
+npm run deploy:staging --network kovan
 ```
 
-# Performance optimizations
+## Deploy
 
-For faster runs of your tests and scripts, consider skipping ts-node's type checking by setting the environment variable `TS_NODE_TRANSPILE_ONLY` to `1` in hardhat's environment. For more details see [the documentation](https://hardhat.org/guides/typescript.html#performance-optimizations).
+Run to deploy all contracts to a network from Hardhat config:
+
+```bash
+npm run deploy --network mainnet
+```
+
+## References
+
+- [MakerDAO](https://makerdao.com/en/)
+- [Chainlink Keepers Docs](https://docs.chain.link/docs/chainlink-keepers/introduction/)

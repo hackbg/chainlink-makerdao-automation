@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "../interfaces/ITopUp.sol";
-
-contract DssVestTopUpMock is ITopUp {
+contract DssVestTopUpMock {
     bool private checkerState;
 
     event TopUp();

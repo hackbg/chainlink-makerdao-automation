@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import "./interfaces/ITopUp.sol";
 
 interface DssVestLike {
     function vest(uint256 _id) external;
@@ -43,7 +42,7 @@ interface KeeperRegistryLike {
 /// @notice Replenishes a Chainlink upkeep balance on demand
 /// @dev Withdraws vested tokens or uses transferred tokens from Maker's protocol and
 /// funds an upkeep after swapping the payment tokens for LINK
-contract DssVestTopUp is ITopUp, Ownable {
+contract DssVestTopUp is Ownable {
     uint24 public constant UNISWAP_POOL_FEE = 3000;
 
     DssVestLike public immutable dssVest;

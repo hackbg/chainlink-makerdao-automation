@@ -4,7 +4,7 @@ pragma solidity ^0.8.9;
 import "@chainlink/contracts/src/v0.8/KeeperCompatible.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../vendor/dss-cron/src/interfaces/IJob.sol";
-import "./interfaces/ITopUp.sol";
+import "./DssVestTopUp.sol";
 
 interface SequencerLike {
     function numJobs() external view returns (uint256);
@@ -17,7 +17,7 @@ interface SequencerLike {
 /// Additionally it calls the top up contract if upkeep funding is needed.
 contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
     SequencerLike public immutable sequencer;
-    ITopUp public topUp;
+    DssVestTopUp public topUp;
     bytes32 public network;
 
     constructor(address _sequencer, bytes32 _network) {
@@ -81,6 +81,6 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
     // Admin functions
     // ------------------------
     function setTopUp(address _topUp) external onlyOwner {
-        topUp = ITopUp(_topUp);
+        topUp = DssVestTopUp(_topUp);
     }
 }

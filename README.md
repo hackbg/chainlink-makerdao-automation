@@ -56,7 +56,7 @@ npm run test
 To test on a live keeper network, deploy a staging environment on a testnet like Kovan:
 
 ```bash
-npm run deploy:staging --network kovan
+npx hardhat run scripts/deploy_staging.ts --network kovan
 ```
 
 ## Deploy
@@ -64,7 +64,7 @@ npm run deploy:staging --network kovan
 Run to deploy all contracts to a network from Hardhat config:
 
 ```bash
-npm run deploy --network mainnet
+npx hardhat run scripts/deploy.ts --network mainnet
 ```
 
 ## References

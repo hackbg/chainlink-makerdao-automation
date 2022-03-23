@@ -38,10 +38,12 @@ interface KeeperRegistryLike {
         returns (uint96 minBalance);
 }
 
-/// @title DssVestTopUp
-/// @notice Replenishes a Chainlink upkeep balance on demand
-/// @dev Withdraws vested tokens or uses transferred tokens from Maker's protocol and
-/// funds an upkeep after swapping the payment tokens for LINK
+/**
+ * @title DssVestTopUp
+ * @notice Replenishes a Chainlink upkeep balance on demand
+ * @dev Withdraws vested tokens or uses transferred tokens from Maker's protocol and
+ * funds an upkeep after swapping the payment tokens for LINK
+ */
 contract DssVestTopUp is Ownable {
     uint24 public constant UNISWAP_POOL_FEE = 3000;
 
@@ -82,12 +84,12 @@ contract DssVestTopUp is Ownable {
         setMinBalancePremium(_minBalancePremium);
     }
 
-    function initialized() internal view returns (bool) {
-        return vestId != 0 && upkeepId != 0;
-    }
+    // ACTIONS
 
-    /// @notice Tops up upkeep balance with LINK
-    /// @dev Called by the DssCronKeeper contract when check returns true
+    /**
+     * @notice Tops up upkeep balance with LINK
+     * @dev Called by the DssCronKeeper contract when check returns true
+     */
     function run() public {
         require(initialized(), "not initialized");
         uint256 amt;
@@ -128,10 +130,12 @@ contract DssVestTopUp is Ownable {
         keeperRegistry.addFunds(upkeepId, uint96(amountOut));
     }
 
-    /// @notice Checks whether top up is needed
-    /// @dev Called by the upkeep
-    /// @return result indicating if topping up the upkeep balance is needed and
-    /// if there's enough unpaid vested tokens or tokens in the contract balance
+    /**
+     * @notice Checks whether top up is needed
+     * @dev Called by the upkeep
+     * @return result indicating if topping up the upkeep balance is needed and
+     * if there's enough unpaid vested tokens or tokens in the contract balance
+     */
     function check() public view returns (bool) {
         require(initialized(), "not initialized");
         (, , , uint96 balance, , , ) = keeperRegistry.getUpkeep(upkeepId);
@@ -145,24 +149,33 @@ contract DssVestTopUp is Ownable {
         return true;
     }
 
-    /// @notice Retrieves the vest payment token balance of this contract
-    /// @return balance
+    // GETTERS
+
+    /**
+     * @notice Retrieves the vest payment token balance of this contract
+     * @return balance
+     */
     function getPaymentBalance() public view returns (uint256) {
         return IERC20(paymentToken).balanceOf(address(this));
     }
 
-    /// @notice Calculates the minimum balance required to keep the upkeep active
-    /// @dev Adds a premium on top of the minimum balance to prevent upkeep from going inactive
-    /// @return threshold for triggering top up
+    /**
+     * @notice Calculates the minimum balance required to keep the upkeep active
+     * @dev Adds a premium on top of the minimum balance to prevent upkeep from going inactive
+     * @return threshold for triggering top up
+     */
     function getUpkeepThreshold() public view returns (uint256) {
         uint256 minBalance = keeperRegistry.getMinBalanceForUpkeep(upkeepId);
         uint256 premium = (minBalance * minBalancePremium) / 100;
         return minBalance + premium;
     }
 
-    // ------------------------
-    // Admin functions
-    // ------------------------
+    function initialized() internal view returns (bool) {
+        return vestId != 0 && upkeepId != 0;
+    }
+
+    // SETTERS
+
     function setVestId(uint256 _vestId) external onlyOwner {
         vestId = _vestId;
     }

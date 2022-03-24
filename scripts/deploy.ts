@@ -67,7 +67,7 @@ async function main() {
     LINK_TOKEN,
     parseEther(MIN_WITHDRAW_AMT),
     parseEther(MAX_DEPOSIT_AMT),
-    parseEther(MIN_BALANCE_PREMIUM)
+    MIN_BALANCE_PREMIUM
   );
   await topUp.deployed();
   console.log("DssVestTopUp deployed to:", topUp.address);

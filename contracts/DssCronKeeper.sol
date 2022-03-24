@@ -4,7 +4,7 @@ pragma solidity ^0.8.9;
 import "@chainlink/contracts/src/v0.8/KeeperCompatible.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../vendor/dss-cron/src/interfaces/IJob.sol";
-import "./interfaces/ITopUp.sol";
+import "./DssVestTopUp.sol";
 
 interface SequencerLike {
     function numJobs() external view returns (uint256);
@@ -12,12 +12,14 @@ interface SequencerLike {
     function jobAt(uint256 index) external view returns (address);
 }
 
-/// @title DssCronKeeper
-/// @notice Checks for Maker protocol's cron jobs that need work and runs them.
-/// Additionally it calls the top up contract if upkeep funding is needed.
+/**
+ * @title DssCronKeeper
+ * @notice Checks for Maker protocol's cron jobs that need work and runs them.
+ * Additionally it calls the top up contract if upkeep funding is needed.
+ */
 contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
     SequencerLike public immutable sequencer;
-    ITopUp public topUp;
+    DssVestTopUp public topUp;
     bytes32 public network;
 
     constructor(address _sequencer, bytes32 _network) {
@@ -25,9 +27,12 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
         network = _network;
     }
 
-    /// @notice Checks whether upkeep balance needs to be topped up
-    /// or if there is a workable job
-    /// @inheritdoc KeeperCompatibleInterface
+    // ACTIONS
+
+    /**
+     * @notice Checks whether upkeep balance needs to be topped up
+     * or if there is a workable job
+     */
     function checkUpkeep(bytes calldata)
         external
         override
@@ -43,31 +48,40 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
         return (false, "");
     }
 
-    /// @notice Executes the requested function from checkUpkeep result
-    /// @dev Called by the keeper
-    /// @inheritdoc KeeperCompatibleInterface
+    /**
+     * @notice Executes the requested function from checkUpkeep result
+     * @dev Called by the keeper
+     */
     function performUpkeep(bytes calldata performData) external override {
         (bool success, ) = address(this).delegatecall(performData);
         require(success, "failed to perform upkeep");
     }
 
-    /// @notice Executes a job with params
-    /// @dev work function checks if job is still pending and it's still network's turn,
-    /// otherwise it throws an error
-    /// @param job address
-    /// @param args to pass to the work function
+    /**
+     * @notice Executes a job with params
+     * @dev work function checks if job is still pending and it's still network's turn,
+     * otherwise it throws an error
+     * @param job address
+     * @param args to pass to the work function
+     */
     function runJob(address job, bytes memory args) public {
         IJob(job).work(network, args);
     }
 
-    /// @notice Calls the associated top up contract to fund the upkeep
+    /**
+     * @notice Calls the associated top up contract to fund the upkeep
+     */
     function runTopUp() public {
         topUp.run();
     }
 
-    /// @notice Finds a job pending to be executed and it's the network's turn
-    /// @return job address
-    /// @return args for the job's work function
+    // GETTERS
+
+    /**
+     * @notice Finds a job pending to be executed when it's the network's turn
+     * @return job address
+     * @return args for the job's work function
+     */
     function getWorkableJob() internal returns (address, bytes memory) {
         for (uint256 i = 0; i < sequencer.numJobs(); i++) {
             address job = sequencer.jobAt(i);
@@ -77,10 +91,9 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
         return (address(0), "");
     }
 
-    // ------------------------
-    // Admin functions
-    // ------------------------
+    // SETTERS
+
     function setTopUp(address _topUp) external onlyOwner {
-        topUp = ITopUp(_topUp);
+        topUp = DssVestTopUp(_topUp);
     }
 }

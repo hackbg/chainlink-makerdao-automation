@@ -30,7 +30,7 @@ async function main() {
   const Sequencer = await ethers.getContractFactory("Sequencer");
   const sequencer = await Sequencer.deploy();
   console.log("Sequencer deployed to:", sequencer.address);
-  await sequencer.file(formatBytes32String("window"), 2);
+  await sequencer.file(formatBytes32String("window"), 10);
   await sequencer.addNetwork(formatBytes32String("test1"));
   await sequencer.addNetwork(formatBytes32String("test2"));
   const SampleJob = await ethers.getContractFactory("SampleJob");
@@ -54,7 +54,7 @@ async function main() {
   const DssVest = await ethers.getContractFactory("DssVestMintable");
   const dssVest = await DssVest.deploy(paymentToken.address);
   console.log("DssVest deployed to:", dssVest.address);
-  await dssVest.file(formatBytes32String("cap"), 1000);
+  await dssVest.file(formatBytes32String("cap"), parseEther("1"));
   await paymentToken.grantRole(
     keccak256(toUtf8Bytes("MINTER_ROLE")),
     dssVest.address
@@ -73,7 +73,7 @@ async function main() {
     STAGING_LINK_TOKEN,
     parseEther("0"), // no minWithdraw
     parseEther("10"),
-    parseEther("7")
+    20
   );
   console.log("DssVestTopUp deployed to:", topUp.address);
 
@@ -86,7 +86,7 @@ async function main() {
   const now = block.timestamp;
   const createVestTx = await dssVest.create(
     topUp.address,
-    10000, // total amount of vesting plan
+    parseEther("100"), // total amount of vesting plan
     now,
     1000,
     0,

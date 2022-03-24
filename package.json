@@ -6,9 +6,7 @@
   "scripts": {
     "compile": "npx hardhat compile",
     "test": "npx hardhat test",
-    "coverage": "npx hardhat coverage --network hardhat",
-    "deploy": "npx hardhat run scripts/deploy.ts",
-    "deploy:staging": "npx hardhat run scripts/deploy_staging.ts"
+    "coverage": "npx hardhat coverage --network hardhat"
   },
   "keywords": [],
   "author": "",

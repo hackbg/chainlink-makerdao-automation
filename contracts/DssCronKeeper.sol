@@ -14,8 +14,8 @@ interface SequencerLike {
 
 /**
  * @title DssCronKeeper
- * @notice Checks for Maker protocol's cron jobs that need work and runs them.
- * Additionally it calls the top up contract if upkeep funding is needed.
+ * @notice Checks for Maker protocol cron jobs that need work and runs them.
+ * Checks if upkeep funding is needed and executes it.
  */
 contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
     SequencerLike public immutable sequencer;
@@ -30,8 +30,7 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
     // ACTIONS
 
     /**
-     * @notice Checks whether upkeep balance needs to be topped up
-     * or if there is a workable job
+     * @notice Check whether upkeep needs funding or there is a workable job
      */
     function checkUpkeep(bytes calldata)
         external
@@ -49,7 +48,7 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
     }
 
     /**
-     * @notice Executes the requested function from checkUpkeep result
+     * @notice Execute contract function with arguments
      * @dev Called by the keeper
      */
     function performUpkeep(bytes calldata performData) external override {
@@ -58,9 +57,9 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
     }
 
     /**
-     * @notice Executes a job with params
-     * @dev work function checks if job is still pending and it's still network's turn,
-     * otherwise it throws an error
+     * @notice Execute cron job with params
+     * @dev Job work function checks if is still pending and still network turn,
+     * otherwise it reverts with an error
      * @param job address
      * @param args to pass to the work function
      */
@@ -69,7 +68,7 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
     }
 
     /**
-     * @notice Calls the associated top up contract to fund the upkeep
+     * @notice Call the associated top up contract to fund the upkeep
      */
     function runTopUp() public {
         topUp.run();
@@ -78,7 +77,7 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
     // GETTERS
 
     /**
-     * @notice Finds a job pending to be executed when it's the network's turn
+     * @notice Find a job pending to be executed when it's the network's turn
      * @return job address
      * @return args for the job's work function
      */

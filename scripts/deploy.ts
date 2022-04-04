@@ -20,7 +20,7 @@ const {
   LINK_TOKEN,
   MIN_WITHDRAW_AMT,
   MAX_DEPOSIT_AMT,
-  MIN_BALANCE_PREMIUM,
+  BALANCE_THRESHOLD,
 } = process.env as ProcessEnv;
 
 async function main() {
@@ -43,7 +43,7 @@ async function main() {
     !LINK_TOKEN ||
     !MIN_WITHDRAW_AMT ||
     !MAX_DEPOSIT_AMT ||
-    !MIN_BALANCE_PREMIUM
+    !BALANCE_THRESHOLD
   ) {
     throw new Error("Missing required env variables!");
   }
@@ -67,7 +67,7 @@ async function main() {
     LINK_TOKEN,
     parseEther(MIN_WITHDRAW_AMT),
     parseEther(MAX_DEPOSIT_AMT),
-    MIN_BALANCE_PREMIUM
+    parseEther(BALANCE_THRESHOLD)
   );
   await topUp.deployed();
   console.log("DssVestTopUp deployed to:", topUp.address);

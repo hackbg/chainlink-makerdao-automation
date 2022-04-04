@@ -31,11 +31,6 @@ interface KeeperRegistryLike {
         );
 
     function addFunds(uint256 id, uint96 amount) external;
-
-    function getMinBalanceForUpkeep(uint256 id)
-        external
-        view
-        returns (uint96 minBalance);
 }
 
 /**
@@ -58,7 +53,7 @@ contract DssVestTopUp is Ownable {
     uint256 public upkeepId;
     uint256 public minWithdrawAmt;
     uint256 public maxDepositAmt;
-    uint256 public minBalancePremium;
+    uint256 public threshold;
 
     constructor(
         address _dssVest,
@@ -70,7 +65,7 @@ contract DssVestTopUp is Ownable {
         address _linkToken,
         uint256 _minWithdrawAmt,
         uint256 _maxDepositAmt,
-        uint256 _minBalancePremium
+        uint256 _threshold
     ) {
         dssVest = DssVestLike(_dssVest);
         daiJoin = DaiJoinLike(_daiJoin);
@@ -81,7 +76,7 @@ contract DssVestTopUp is Ownable {
         linkToken = _linkToken;
         setMinWithdrawAmt(_minWithdrawAmt);
         setMaxDepositAmt(_maxDepositAmt);
-        setMinBalancePremium(_minBalancePremium);
+        setThreshold(_threshold);
     }
 
     // ACTIONS
@@ -140,7 +135,7 @@ contract DssVestTopUp is Ownable {
         require(initialized(), "not initialized");
         (, , , uint96 balance, , , ) = keeperRegistry.getUpkeep(upkeepId);
         if (
-            getUpkeepThreshold() < balance ||
+            threshold < balance ||
             (dssVest.unpaid(vestId) < minWithdrawAmt &&
                 getPaymentBalance() < minWithdrawAmt)
         ) {
@@ -157,17 +152,6 @@ contract DssVestTopUp is Ownable {
      */
     function getPaymentBalance() public view returns (uint256) {
         return IERC20(paymentToken).balanceOf(address(this));
-    }
-
-    /**
-     * @notice Calculates the minimum balance required to keep the upkeep active
-     * @dev Adds a premium on top of the minimum balance to prevent upkeep from going inactive
-     * @return threshold for triggering top up
-     */
-    function getUpkeepThreshold() public view returns (uint256) {
-        uint256 minBalance = keeperRegistry.getMinBalanceForUpkeep(upkeepId);
-        uint256 premium = (minBalance * minBalancePremium) / 100;
-        return minBalance + premium;
     }
 
     function initialized() internal view returns (bool) {
@@ -192,7 +176,7 @@ contract DssVestTopUp is Ownable {
         maxDepositAmt = _maxDepositAmt;
     }
 
-    function setMinBalancePremium(uint256 _minBalancePremium) public onlyOwner {
-        minBalancePremium = _minBalancePremium;
+    function setThreshold(uint256 _threshold) public onlyOwner {
+        threshold = _threshold;
     }
 }

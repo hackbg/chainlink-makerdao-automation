@@ -35,8 +35,8 @@ interface KeeperRegistryLike {
 
 /**
  * @title DssVestTopUp
- * @notice Replenishes a Chainlink upkeep balance on demand
- * @dev Withdraws vested tokens or uses transferred tokens from Maker's protocol and
+ * @notice Replenishes upkeep balance on demand
+ * @dev Withdraws vested tokens or uses transferred tokens from Maker protocol and
  * funds an upkeep after swapping the payment tokens for LINK
  */
 contract DssVestTopUp is Ownable {
@@ -82,7 +82,7 @@ contract DssVestTopUp is Ownable {
     // ACTIONS
 
     /**
-     * @notice Tops up upkeep balance with LINK
+     * @notice Top up upkeep balance with LINK
      * @dev Called by the DssCronKeeper contract when check returns true
      */
     function run() public {
@@ -126,8 +126,8 @@ contract DssVestTopUp is Ownable {
     }
 
     /**
-     * @notice Checks whether top up is needed
-     * @dev Called by the upkeep
+     * @notice Check whether top up is needed
+     * @dev Called by the keeper
      * @return result indicating if topping up the upkeep balance is needed and
      * if there's enough unpaid vested tokens or tokens in the contract balance
      */
@@ -147,7 +147,7 @@ contract DssVestTopUp is Ownable {
     // GETTERS
 
     /**
-     * @notice Retrieves the vest payment token balance of this contract
+     * @notice Retrieve the vest payment token balance of this contract
      * @return balance
      */
     function getPaymentBalance() public view returns (uint256) {

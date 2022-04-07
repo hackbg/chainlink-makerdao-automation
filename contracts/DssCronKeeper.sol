@@ -40,7 +40,7 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
         if (address(upkeepRefunder) != address(0) && upkeepRefunder.shouldRefundUpkeep()) {
             return (true, abi.encodeWithSelector(this.refundUpkeep.selector));
         }
-        (address job, bytes memory args) = getWorkableJob();
+        (address job, bytes memory args) = _getWorkableJob();
         if (job != address(0)) {
             return (true, abi.encodeWithSelector(this.runJob.selector, job, args));
         }
@@ -81,7 +81,7 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
      * @return job address
      * @return args for the job's work function
      */
-    function getWorkableJob() internal returns (address, bytes memory) {
+    function _getWorkableJob() internal returns (address, bytes memory) {
         for (uint256 i = 0; i < sequencer.numJobs(); i++) {
             address job = sequencer.jobAt(i);
             (bool canWork, bytes memory args) = IJob(job).workable(network);

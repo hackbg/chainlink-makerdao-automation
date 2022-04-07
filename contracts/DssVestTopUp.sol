@@ -103,27 +103,8 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
                 amt = maxDepositAmt;
             }
         }
-        // Swap payment token amount for LINK
-        TransferHelper.safeApprove(paymentToken, address(swapRouter), amt);
-        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
-            .ExactInputSingleParams({
-                tokenIn: paymentToken,
-                tokenOut: linkToken,
-                fee: UNISWAP_POOL_FEE,
-                recipient: address(this),
-                deadline: block.timestamp,
-                amountIn: amt,
-                amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
-            });
-        uint256 amountOut = swapRouter.exactInputSingle(params);
-        // Fund upkeep
-        TransferHelper.safeApprove(
-            linkToken,
-            address(keeperRegistry),
-            amountOut
-        );
-        keeperRegistry.addFunds(upkeepId, uint96(amountOut));
+        uint256 amtOut = _swapPaymentToLink(amt);
+        _fundUpkeep(amtOut);
     }
 
     /**
@@ -143,6 +124,32 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
             return false;
         }
         return true;
+    }
+
+    // HELPERS
+
+    function _swapPaymentToLink(uint256 amount)
+        internal
+        returns (uint256 amountOut)
+    {
+        TransferHelper.safeApprove(paymentToken, address(swapRouter), amount);
+        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
+            .ExactInputSingleParams({
+                tokenIn: paymentToken,
+                tokenOut: linkToken,
+                fee: UNISWAP_POOL_FEE,
+                recipient: address(this),
+                deadline: block.timestamp,
+                amountIn: amount,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            });
+        amountOut = swapRouter.exactInputSingle(params);
+    }
+
+    function _fundUpkeep(uint256 amount) internal {
+        TransferHelper.safeApprove(linkToken, address(keeperRegistry), amount);
+        keeperRegistry.addFunds(upkeepId, uint96(amount));
     }
 
     // GETTERS

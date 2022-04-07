@@ -152,6 +152,14 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
         keeperRegistry.addFunds(upkeepId, uint96(amount));
     }
 
+    /**
+     * @dev Rescues random funds stuck
+     * @param token address of the token to rescue
+     */
+    function recoverFunds(IERC20 token) external onlyOwner {
+        token.transfer(msg.sender, token.balanceOf(address(this)));
+    }
+
     // GETTERS
 
     /**

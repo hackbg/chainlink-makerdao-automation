@@ -12,10 +12,10 @@ const { formatBytes32String } = ethers.utils;
 
 const ABI = [
   "function runJob(address job, bytes memory args)",
-  "function runTopUp()",
+  "function refundUpkeep()",
 ];
 const iface = new ethers.utils.Interface(ABI);
-const runTopUpEndcoded = iface.encodeFunctionData("runTopUp");
+const refundUpkeepEncoded = iface.encodeFunctionData("refundUpkeep");
 
 describe("DssCronKeeper", function () {
   let keeper: DssCronKeeper;
@@ -45,7 +45,7 @@ describe("DssCronKeeper", function () {
       "DssVestTopUpMock"
     );
     topUpMock = await DssVestTopUpMock.deploy();
-    await keeper.setTopUp(topUpMock.address);
+    await keeper.setUpkeepRefunder(topUpMock.address);
   });
 
   describe("checkUpkeep", function () {
@@ -63,7 +63,7 @@ describe("DssCronKeeper", function () {
         HashZero
       );
       expect(upkeepNeeded).to.eq(true);
-      expect(perfromData).to.eq(runTopUpEndcoded);
+      expect(perfromData).to.eq(refundUpkeepEncoded);
     });
 
     it("should return false if no pending jobs and no need for topUp", async function () {
@@ -90,7 +90,7 @@ describe("DssCronKeeper", function () {
     });
 
     it("should execute top up", async function () {
-      const performTx = await keeper.performUpkeep(runTopUpEndcoded);
+      const performTx = await keeper.performUpkeep(refundUpkeepEncoded);
       const performRc = await performTx.wait();
       const topUpEvent = performRc.events?.find(
         (e) => e.address === topUpMock.address

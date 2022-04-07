@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import "./interfaces/IUpkeepRefunder.sol";
 
 interface DssVestLike {
     function vest(uint256 _id) external;
@@ -39,7 +40,7 @@ interface KeeperRegistryLike {
  * @dev Withdraws vested tokens or uses transferred tokens from Maker protocol and
  * funds an upkeep after swapping the payment tokens for LINK
  */
-contract DssVestTopUp is Ownable {
+contract DssVestTopUp is IUpkeepRefunder, Ownable {
     uint24 public constant UNISWAP_POOL_FEE = 3000;
 
     DssVestLike public immutable dssVest;
@@ -85,7 +86,7 @@ contract DssVestTopUp is Ownable {
      * @notice Top up upkeep balance with LINK
      * @dev Called by the DssCronKeeper contract when check returns true
      */
-    function run() public {
+    function refundUpkeep() public {
         require(initialized(), "not initialized");
         uint256 amt;
         uint256 preBalance = getPaymentBalance();
@@ -131,7 +132,7 @@ contract DssVestTopUp is Ownable {
      * @return result indicating if topping up the upkeep balance is needed and
      * if there's enough unpaid vested tokens or tokens in the contract balance
      */
-    function check() public view returns (bool) {
+    function shouldRefundUpkeep() public view returns (bool) {
         require(initialized(), "not initialized");
         (, , , uint96 balance, , , ) = keeperRegistry.getUpkeep(upkeepId);
         if (

@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-contract DssVestTopUpMock {
+import "../interfaces/IUpkeepRefunder.sol";
+
+contract DssVestTopUpMock is IUpkeepRefunder {
     bool private checkerState;
 
     event TopUp();
@@ -10,15 +12,18 @@ contract DssVestTopUpMock {
         checkerState = false;
     }
 
-    function run() public {
+    function refundUpkeep() public {
         emit TopUp();
     }
 
-    function check() public view returns (bool) {
+    function shouldRefundUpkeep() public view returns (bool) {
         return checkerState;
     }
 
     function setChecker(bool state) public {
         checkerState = state;
     }
+
+    // solhint-disable-next-line no-empty-blocks
+    function setUpkeepId(uint256 _upkeepId) external {}
 }

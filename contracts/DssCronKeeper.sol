@@ -4,7 +4,7 @@ pragma solidity ^0.8.9;
 import "@chainlink/contracts/src/v0.8/KeeperCompatible.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../vendor/dss-cron/src/interfaces/IJob.sol";
-import "./DssVestTopUp.sol";
+import "./interfaces/IUpkeepRefunder.sol";
 
 interface SequencerLike {
     function numJobs() external view returns (uint256);
@@ -19,7 +19,7 @@ interface SequencerLike {
  */
 contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
     SequencerLike public immutable sequencer;
-    DssVestTopUp public topUp;
+    IUpkeepRefunder public upkeepRefunder;
     bytes32 public network;
 
     constructor(address _sequencer, bytes32 _network) {
@@ -37,8 +37,8 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
         override
         returns (bool, bytes memory)
     {
-        if (address(topUp) != address(0) && topUp.check()) {
-            return (true, abi.encodeWithSelector(this.runTopUp.selector));
+        if (address(upkeepRefunder) != address(0) && upkeepRefunder.shouldRefundUpkeep()) {
+            return (true, abi.encodeWithSelector(this.refundUpkeep.selector));
         }
         (address job, bytes memory args) = getWorkableJob();
         if (job != address(0)) {
@@ -70,8 +70,8 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
     /**
      * @notice Call the associated top up contract to fund the upkeep
      */
-    function runTopUp() public {
-        topUp.run();
+    function refundUpkeep() public {
+        upkeepRefunder.refundUpkeep();
     }
 
     // GETTERS
@@ -92,7 +92,7 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
 
     // SETTERS
 
-    function setTopUp(address _topUp) external onlyOwner {
-        topUp = DssVestTopUp(_topUp);
+    function setUpkeepRefunder(address _upkeepRefunder) external onlyOwner {
+        upkeepRefunder = IUpkeepRefunder(_upkeepRefunder);
     }
 }

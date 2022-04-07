@@ -80,14 +80,19 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
         setThreshold(_threshold);
     }
 
+    modifier initialized () {
+        require(vestId > 0, "vestId not set");
+        require(upkeepId > 0, "upkeepId not set");
+        _;
+    }
+
     // ACTIONS
 
     /**
      * @notice Top up upkeep balance with LINK
      * @dev Called by the DssCronKeeper contract when check returns true
      */
-    function refundUpkeep() public {
-        require(initialized(), "not initialized");
+    function refundUpkeep() public initialized {
         uint256 amt;
         uint256 preBalance = getPaymentBalance();
         if (preBalance > 0) {
@@ -113,8 +118,7 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
      * @return result indicating if topping up the upkeep balance is needed and
      * if there's enough unpaid vested tokens or tokens in the contract balance
      */
-    function shouldRefundUpkeep() public view returns (bool) {
-        require(initialized(), "not initialized");
+    function shouldRefundUpkeep() public view initialized returns (bool) {
         (, , , uint96 balance, , , ) = keeperRegistry.getUpkeep(upkeepId);
         if (
             threshold < balance ||
@@ -168,10 +172,6 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
      */
     function getPaymentBalance() public view returns (uint256) {
         return IERC20(paymentToken).balanceOf(address(this));
-    }
-
-    function initialized() internal view returns (bool) {
-        return vestId != 0 && upkeepId != 0;
     }
 
     // SETTERS

@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import "./interfaces/IUpkeepRefunder.sol";
 
 interface DssVestLike {
     function vest(uint256 _id) external;
@@ -39,7 +40,7 @@ interface KeeperRegistryLike {
  * @dev Withdraws vested tokens or uses transferred tokens from Maker protocol and
  * funds an upkeep after swapping the payment tokens for LINK
  */
-contract DssVestTopUp is Ownable {
+contract DssVestTopUp is IUpkeepRefunder, Ownable {
     uint24 public constant UNISWAP_POOL_FEE = 3000;
 
     DssVestLike public immutable dssVest;
@@ -79,14 +80,19 @@ contract DssVestTopUp is Ownable {
         setThreshold(_threshold);
     }
 
+    modifier initialized () {
+        require(vestId > 0, "vestId not set");
+        require(upkeepId > 0, "upkeepId not set");
+        _;
+    }
+
     // ACTIONS
 
     /**
      * @notice Top up upkeep balance with LINK
      * @dev Called by the DssCronKeeper contract when check returns true
      */
-    function run() public {
-        require(initialized(), "not initialized");
+    function refundUpkeep() public initialized {
         uint256 amt;
         uint256 preBalance = getPaymentBalance();
         if (preBalance > 0) {
@@ -102,27 +108,8 @@ contract DssVestTopUp is Ownable {
                 amt = maxDepositAmt;
             }
         }
-        // Swap payment token amount for LINK
-        TransferHelper.safeApprove(paymentToken, address(swapRouter), amt);
-        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
-            .ExactInputSingleParams({
-                tokenIn: paymentToken,
-                tokenOut: linkToken,
-                fee: UNISWAP_POOL_FEE,
-                recipient: address(this),
-                deadline: block.timestamp,
-                amountIn: amt,
-                amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
-            });
-        uint256 amountOut = swapRouter.exactInputSingle(params);
-        // Fund upkeep
-        TransferHelper.safeApprove(
-            linkToken,
-            address(keeperRegistry),
-            amountOut
-        );
-        keeperRegistry.addFunds(upkeepId, uint96(amountOut));
+        uint256 amtOut = _swapPaymentToLink(amt);
+        _fundUpkeep(amtOut);
     }
 
     /**
@@ -131,8 +118,7 @@ contract DssVestTopUp is Ownable {
      * @return result indicating if topping up the upkeep balance is needed and
      * if there's enough unpaid vested tokens or tokens in the contract balance
      */
-    function check() public view returns (bool) {
-        require(initialized(), "not initialized");
+    function shouldRefundUpkeep() public view initialized returns (bool) {
         (, , , uint96 balance, , , ) = keeperRegistry.getUpkeep(upkeepId);
         if (
             threshold < balance ||
@@ -144,6 +130,40 @@ contract DssVestTopUp is Ownable {
         return true;
     }
 
+    // HELPERS
+
+    function _swapPaymentToLink(uint256 amount)
+        internal
+        returns (uint256 amountOut)
+    {
+        TransferHelper.safeApprove(paymentToken, address(swapRouter), amount);
+        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
+            .ExactInputSingleParams({
+                tokenIn: paymentToken,
+                tokenOut: linkToken,
+                fee: UNISWAP_POOL_FEE,
+                recipient: address(this),
+                deadline: block.timestamp,
+                amountIn: amount,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            });
+        amountOut = swapRouter.exactInputSingle(params);
+    }
+
+    function _fundUpkeep(uint256 amount) internal {
+        TransferHelper.safeApprove(linkToken, address(keeperRegistry), amount);
+        keeperRegistry.addFunds(upkeepId, uint96(amount));
+    }
+
+    /**
+     * @dev Rescues random funds stuck
+     * @param token address of the token to rescue
+     */
+    function recoverFunds(IERC20 token) external onlyOwner {
+        token.transfer(msg.sender, token.balanceOf(address(this)));
+    }
+
     // GETTERS
 
     /**
@@ -152,10 +172,6 @@ contract DssVestTopUp is Ownable {
      */
     function getPaymentBalance() public view returns (uint256) {
         return IERC20(paymentToken).balanceOf(address(this));
-    }
-
-    function initialized() internal view returns (bool) {
-        return vestId != 0 && upkeepId != 0;
     }
 
     // SETTERS

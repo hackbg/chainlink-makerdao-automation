@@ -97,12 +97,12 @@ describe("DssVestTopUp", function () {
 
   describe("checker", function () {
     it("should return false if balance > threshold", async function () {
-      expect(await topUp.check()).to.eq(false);
+      expect(await topUp.shouldRefundUpkeep()).to.eq(false);
     });
 
     it("should return false if unpaid < minWithdrawAmt", async function () {
       await keeperRegistryMock.setUpkeepBalance(50);
-      expect(await topUp.check()).to.eq(false);
+      expect(await topUp.shouldRefundUpkeep()).to.eq(false);
     });
 
     it("should return true if balance < threshold and unpaid > minWithdrawAmt", async function () {
@@ -110,14 +110,14 @@ describe("DssVestTopUp", function () {
       await network.provider.send("evm_increaseTime", [100]);
       await network.provider.send("evm_mine");
 
-      expect(await topUp.check()).to.eq(true);
+      expect(await topUp.shouldRefundUpkeep()).to.eq(true);
     });
 
     it("should return true if balance < threshold and preBalance > minWithdrawAmt while unpaid < minWithdrawAmt", async function () {
       await keeperRegistryMock.setUpkeepBalance(50);
       await token.mint(topUp.address, 1000);
 
-      expect(await topUp.check()).to.eq(true);
+      expect(await topUp.shouldRefundUpkeep()).to.eq(true);
     });
   });
 
@@ -129,7 +129,7 @@ describe("DssVestTopUp", function () {
 
     it("should vest accrued tokens", async function () {
       const unpaid = await dssVest.unpaid(vestId);
-      await topUp.run();
+      await topUp.refundUpkeep();
       const vested = await token.balanceOf(topUp.address);
 
       expect(unpaid).to.eq(vested);
@@ -137,7 +137,7 @@ describe("DssVestTopUp", function () {
 
     it("should return excess payment to surplus buffer", async function () {
       const unpaid = await dssVest.unpaid(vestId);
-      const topUpTx = await topUp.run();
+      const topUpTx = await topUp.refundUpkeep();
 
       // get join event data from mock
       const topUpRc = await topUpTx.wait();
@@ -155,7 +155,7 @@ describe("DssVestTopUp", function () {
     });
 
     it("should fund upkeep", async function () {
-      await topUp.run();
+      await topUp.refundUpkeep();
 
       const upkeepInfo = await keeperRegistryMock.getUpkeep(0);
       expect(upkeepInfo.balance).to.eq(maxDepositAmt.add(initialUpkeepBalance));
@@ -163,7 +163,7 @@ describe("DssVestTopUp", function () {
 
     it("emergency topup", async function () {
       await token.mint(topUp.address, 100);
-      await topUp.run();
+      await topUp.refundUpkeep();
 
       const upkeepInfo = await keeperRegistryMock.getUpkeep(0);
       expect(upkeepInfo.balance).to.eq(initialUpkeepBalance.add(100));

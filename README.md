@@ -1,4 +1,4 @@
-# Chainlink Keeper Contracts for MakerDAO
+# Chainlink Keepers Contracts for MakerDAO
 
 [Chainlink Keepers](https://docs.chain.link/docs/chainlink-keepers/introduction) implementation for [MIP63: Maker Keeper Network](https://forum.makerdao.com/t/mip63-maker-keeper-network/12091).
 
@@ -13,8 +13,8 @@ Maintains Maker protocol by poking oracles, liquidating vaults, managing the aut
 Clone the repo and install all dependencies:
 
 ```bash
-git clone git@github.com:hackbg/chainlink-makerdao-keeper.git
-cd chainlink-makerdao-keeper
+git clone git@github.com:hackbg/chainlink-makerdao-keepers.git
+cd chainlink-makerdao-keepers
 
 git submodule init
 git submodule update

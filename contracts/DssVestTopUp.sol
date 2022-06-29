@@ -93,6 +93,7 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
      * @dev Called by the DssCronKeeper contract when check returns true
      */
     function refundUpkeep() public initialized {
+        require(shouldRefundUpkeep(), "refund not needed");
         uint256 amt;
         uint256 preBalance = getPaymentBalance();
         if (preBalance > 0) {

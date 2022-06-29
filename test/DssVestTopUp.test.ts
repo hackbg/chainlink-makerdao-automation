@@ -122,43 +122,47 @@ describe("DssVestTopUp", function () {
   });
 
   describe("topUp", function () {
-    beforeEach(async function () {
-      await network.provider.send("evm_increaseTime", [1000]);
-      await network.provider.send("evm_mine");
-    });
+    context("accrued tokens", async function () {
+      beforeEach(async function () {
+        await network.provider.send("evm_increaseTime", [1000]);
+        await network.provider.send("evm_mine");
+      });
 
-    it("should vest accrued tokens", async function () {
-      const unpaid = await dssVest.unpaid(vestId);
-      await topUp.refundUpkeep();
-      const vested = await token.balanceOf(topUp.address);
+      it("should vest accrued tokens", async function () {
+        const unpaid = await dssVest.unpaid(vestId);
+        await topUp.refundUpkeep();
+        const vested = await token.balanceOf(topUp.address);
 
-      expect(unpaid).to.eq(vested);
-    });
+        expect(unpaid).to.eq(vested);
+      });
 
-    it("should return excess payment to surplus buffer", async function () {
-      const unpaid = await dssVest.unpaid(vestId);
-      const topUpTx = await topUp.refundUpkeep();
+      it("should return excess payment to surplus buffer", async function () {
+        const unpaid = await dssVest.unpaid(vestId);
+        const topUpTx = await topUp.refundUpkeep();
 
-      // get join event data from mock
-      const topUpRc = await topUpTx.wait();
-      const joinEvent = topUpRc.events?.find(
-        (e) => e.address === daiJoinMock.address
-      );
-      const abiCoder = new ethers.utils.AbiCoder();
-      const [vowAddr, joinAmt] = abiCoder.decode(
-        ["address", "uint256"],
-        joinEvent?.data || ""
-      );
+        // get join event data from mock
+        const topUpRc = await topUpTx.wait();
+        const joinEvent = topUpRc.events?.find(
+          (e) => e.address === daiJoinMock.address
+        );
+        const abiCoder = new ethers.utils.AbiCoder();
+        const [vowAddr, joinAmt] = abiCoder.decode(
+          ["address", "uint256"],
+          joinEvent?.data || ""
+        );
 
-      expect(vowAddr).to.eq(AddressZero);
-      expect(joinAmt).to.eq(unpaid.sub(maxDepositAmt));
-    });
+        expect(vowAddr).to.eq(AddressZero);
+        expect(joinAmt).to.eq(unpaid.sub(maxDepositAmt));
+      });
 
-    it("should fund upkeep", async function () {
-      await topUp.refundUpkeep();
+      it("should fund upkeep", async function () {
+        await topUp.refundUpkeep();
 
-      const upkeepInfo = await keeperRegistryMock.getUpkeep(0);
-      expect(upkeepInfo.balance).to.eq(maxDepositAmt.add(initialUpkeepBalance));
+        const upkeepInfo = await keeperRegistryMock.getUpkeep(0);
+        expect(upkeepInfo.balance).to.eq(
+          maxDepositAmt.add(initialUpkeepBalance)
+        );
+      });
     });
 
     it("emergency topup", async function () {
@@ -167,6 +171,12 @@ describe("DssVestTopUp", function () {
 
       const upkeepInfo = await keeperRegistryMock.getUpkeep(0);
       expect(upkeepInfo.balance).to.eq(initialUpkeepBalance.add(100));
+    });
+
+    it("should not top up if not needed", async function () {
+      await expect(topUp.refundUpkeep()).to.be.revertedWith(
+        "refund not needed"
+      );
     });
   });
 });

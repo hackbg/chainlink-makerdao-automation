@@ -165,12 +165,19 @@ describe("DssVestTopUp", function () {
       });
     });
 
-    it("emergency topup", async function () {
-      await token.mint(topUp.address, 100);
+    it("should fund with emergency topup", async function () {
+      await token.mint(topUp.address, minWithdrawAmt);
       await topUp.refundUpkeep();
 
       const upkeepInfo = await keeperRegistryMock.getUpkeep(0);
       expect(upkeepInfo.balance).to.eq(initialUpkeepBalance.add(100));
+    });
+
+    it("should fail if emergency topup below threshold", async function () {
+      await token.mint(topUp.address, 1);
+      await expect(topUp.refundUpkeep()).to.be.revertedWith(
+        "refund not needed"
+      );
     });
 
     it("should not top up if not needed", async function () {

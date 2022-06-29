@@ -96,7 +96,7 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
         require(shouldRefundUpkeep(), "refund not needed");
         uint256 amt;
         uint256 preBalance = getPaymentBalance();
-        if (preBalance > 0) {
+        if (minWithdrawAmt < preBalance) {
             // Emergency topup
             amt = preBalance;
         } else {

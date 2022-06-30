@@ -56,6 +56,17 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
     uint256 public maxDepositAmt;
     uint256 public threshold;
 
+    event VestIdUpdated(uint256 newVestId);
+    event UpkeepIdUpdated(uint256 newUpkeepId);
+    event MinWithdrawAmtUpdated(uint256 newMinWithdrawAmt);
+    event MaxDepositAmtUpdated(uint256 newMaxDepositAmt);
+    event ThresholdUpdated(uint256 newThreshold);
+    event VestedTokensWithdrawn(uint256 amount);
+    event ExcessPaymentReturned(uint256 amount);
+    event SwappedPaymentTokenForLink(uint256 amountIn, uint256 amountOut);
+    event UpkeepRefunded(uint256 amount);
+    event FundsRecovered(address token, uint256 amount);
+
     constructor(
         address _dssVest,
         address _daiJoin,
@@ -114,10 +125,13 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
             // Withdraw vested tokens
             dssVest.vest(vestId);
             amt = getPaymentBalance();
+            emit VestedTokensWithdrawn(amt);
             if (amt > maxDepositAmt) {
                 // Return excess amount to surplus buffer
-                daiJoin.join(vow, amt - maxDepositAmt);
+                uint256 excessAmt = amt - maxDepositAmt;
+                daiJoin.join(vow, excessAmt);
                 amt = maxDepositAmt;
+                emit ExcessPaymentReturned(excessAmt);
             }
         }
         uint256 amtOut = _swapPaymentToLink(amt);
@@ -161,11 +175,13 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
                 sqrtPriceLimitX96: 0
             });
         amountOut = swapRouter.exactInputSingle(params);
+        emit SwappedPaymentTokenForLink(amount, amountOut);
     }
 
     function _fundUpkeep(uint256 amount) internal {
         TransferHelper.safeApprove(linkToken, address(keeperRegistry), amount);
         keeperRegistry.addFunds(upkeepId, uint96(amount));
+        emit UpkeepRefunded(amount);
     }
 
     /**
@@ -173,7 +189,9 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
      * @param token address of the token to rescue
      */
     function recoverFunds(IERC20 token) external onlyOwner {
-        token.transfer(msg.sender, token.balanceOf(address(this)));
+        uint256 tokenBalance = token.balanceOf(address(this));
+        token.transfer(msg.sender, tokenBalance);
+        emit FundsRecovered(address(token), tokenBalance);
     }
 
     // GETTERS
@@ -191,25 +209,30 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
     function setVestId(uint256 _vestId) external onlyOwner {
         require(_vestId > 0, "invalid vestId");
         vestId = _vestId;
+        emit VestIdUpdated(_vestId);
     }
 
     function setUpkeepId(uint256 _upkeepId) external onlyOwner {
         require(_upkeepId > 0, "invalid upkeepId");
         upkeepId = _upkeepId;
+        emit UpkeepIdUpdated(_upkeepId);
     }
 
     function setMinWithdrawAmt(uint256 _minWithdrawAmt) public onlyOwner {
         require(_minWithdrawAmt > 0, "invalid minWithdrawAmt");
         minWithdrawAmt = _minWithdrawAmt;
+        emit MinWithdrawAmtUpdated(_minWithdrawAmt);
     }
 
     function setMaxDepositAmt(uint256 _maxDepositAmt) public onlyOwner {
         require(_maxDepositAmt > 0, "invalid maxDepositAmt");
         maxDepositAmt = _maxDepositAmt;
+        emit MaxDepositAmtUpdated(_maxDepositAmt);
     }
 
     function setThreshold(uint256 _threshold) public onlyOwner {
         require(_threshold > 0, "invalid threshold");
         threshold = _threshold;
+        emit ThresholdUpdated(_threshold);
     }
 }

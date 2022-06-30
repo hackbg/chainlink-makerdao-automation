@@ -68,6 +68,17 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
         uint256 _maxDepositAmt,
         uint256 _threshold
     ) {
+        require(_dssVest != address(0), "invalid dssVest address");
+        require(_daiJoin != address(0), "invalid daiJoin address");
+        require(_vow != address(0), "invalid vow address");
+        require(_paymentToken != address(0), "invalid paymentToken address");
+        require(_keeperRegistry != address(0), "invalid keeperRegistry address");
+        require(_swapRouter != address(0), "invalid swapRouter address");
+        require(_linkToken != address(0), "invalid linkToken address");
+        require(_minWithdrawAmt > 0, "invalid minWithdrawAmt");
+        require(_maxDepositAmt > 0, "invalid maxDepositAmt");
+        require(_threshold > 0, "invalid threshold");
+
         dssVest = DssVestLike(_dssVest);
         daiJoin = DaiJoinLike(_daiJoin);
         vow = _vow;
@@ -178,22 +189,27 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
     // SETTERS
 
     function setVestId(uint256 _vestId) external onlyOwner {
+        require(_vestId > 0, "invalid vestId");
         vestId = _vestId;
     }
 
     function setUpkeepId(uint256 _upkeepId) external onlyOwner {
+        require(_upkeepId > 0, "invalid upkeepId");
         upkeepId = _upkeepId;
     }
 
     function setMinWithdrawAmt(uint256 _minWithdrawAmt) public onlyOwner {
+        require(_minWithdrawAmt > 0, "invalid minWithdrawAmt");
         minWithdrawAmt = _minWithdrawAmt;
     }
 
     function setMaxDepositAmt(uint256 _maxDepositAmt) public onlyOwner {
+        require(_maxDepositAmt > 0, "invalid maxDepositAmt");
         maxDepositAmt = _maxDepositAmt;
     }
 
     function setThreshold(uint256 _threshold) public onlyOwner {
+        require(_threshold > 0, "invalid threshold");
         threshold = _threshold;
     }
 }

@@ -10,8 +10,10 @@ import {
   KeeperRegistryMock,
 } from "../typechain";
 
-const { AddressZero } = ethers.constants;
 const { formatBytes32String, toUtf8Bytes, keccak256 } = ethers.utils;
+
+const fakeVow = "0xA950524441892A31ebddF91d3cEEFa04Bf454466";
+const fakeLinkToken = "0x514910771AF9Ca656af840dff83E8264EcF986CA";
 
 describe("DssVestTopUp", function () {
   const minWithdrawAmt = BigNumber.from(100);
@@ -63,11 +65,11 @@ describe("DssVestTopUp", function () {
     topUp = await DssVestTopUp.deploy(
       dssVest.address,
       daiJoinMock.address,
-      AddressZero, // vow
+      fakeVow,
       token.address,
       keeperRegistryMock.address,
       swapRouterMock.address,
-      AddressZero, // LINK token
+      fakeLinkToken,
       minWithdrawAmt,
       maxDepositAmt,
       threshold
@@ -151,7 +153,7 @@ describe("DssVestTopUp", function () {
           joinEvent?.data || ""
         );
 
-        expect(vowAddr).to.eq(AddressZero);
+        expect(vowAddr).to.eq(fakeVow);
         expect(joinAmt).to.eq(unpaid.sub(maxDepositAmt));
       });
 

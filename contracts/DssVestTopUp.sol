@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/IUpkeepRefunder.sol";
 
 interface DssVestLike {
@@ -42,11 +43,14 @@ interface KeeperRegistryLike {
  */
 contract DssVestTopUp is IUpkeepRefunder, Ownable {
     uint24 public constant UNISWAP_POOL_FEE = 3000;
+    uint24 public constant UNISWAP_SLIPPAGE_TOLERANCE_PERCENT = 1;
 
     DssVestLike public immutable dssVest;
     DaiJoinLike public immutable daiJoin;
     KeeperRegistryLike public immutable keeperRegistry;
     ISwapRouter public immutable swapRouter;
+    AggregatorV3Interface public immutable paymentUsdPriceFeed;
+    AggregatorV3Interface public immutable linkUsdPriceFeed;
     address public immutable vow;
     address public immutable paymentToken;
     address public immutable linkToken;
@@ -75,6 +79,8 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
         address _keeperRegistry,
         address _swapRouter,
         address _linkToken,
+        address _linkUsdPriceFeed,
+        address _paymentUsdPriceFeed,
         uint256 _minWithdrawAmt,
         uint256 _maxDepositAmt,
         uint256 _threshold
@@ -86,6 +92,8 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
         require(_keeperRegistry != address(0), "invalid keeperRegistry address");
         require(_swapRouter != address(0), "invalid swapRouter address");
         require(_linkToken != address(0), "invalid linkToken address");
+        require(_linkUsdPriceFeed != address(0), "invalid linkUsdPriceFeed address");
+        require(_paymentUsdPriceFeed != address(0), "invalid paymentUsdPriceFeed address");
         require(_minWithdrawAmt > 0, "invalid minWithdrawAmt");
         require(_maxDepositAmt > 0, "invalid maxDepositAmt");
         require(_threshold > 0, "invalid threshold");
@@ -97,12 +105,14 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
         keeperRegistry = KeeperRegistryLike(_keeperRegistry);
         swapRouter = ISwapRouter(_swapRouter);
         linkToken = _linkToken;
+        linkUsdPriceFeed = AggregatorV3Interface(_linkUsdPriceFeed);
+        paymentUsdPriceFeed = AggregatorV3Interface(_paymentUsdPriceFeed);
         setMinWithdrawAmt(_minWithdrawAmt);
         setMaxDepositAmt(_maxDepositAmt);
         setThreshold(_threshold);
     }
 
-    modifier initialized () {
+    modifier initialized() {
         require(vestId > 0, "vestId not set");
         require(upkeepId > 0, "upkeepId not set");
         _;
@@ -171,7 +181,7 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
                 recipient: address(this),
                 deadline: block.timestamp,
                 amountIn: amount,
-                amountOutMinimum: 0,
+                amountOutMinimum: _getSwapPaymentLinkMinOut(amount),
                 sqrtPriceLimitX96: 0
             });
         amountOut = swapRouter.exactInputSingle(params);
@@ -182,6 +192,18 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
         TransferHelper.safeApprove(linkToken, address(keeperRegistry), amount);
         keeperRegistry.addFunds(upkeepId, uint96(amount));
         emit UpkeepRefunded(amount);
+    }
+
+    function _getPaymentLinkPrice() internal view returns (uint256) {
+        (, int256 paymentUsdPrice, , , ) = AggregatorV3Interface(paymentUsdPriceFeed).latestRoundData();
+        (, int256 linkUsdPrice, , , ) = AggregatorV3Interface(linkUsdPriceFeed).latestRoundData();
+        return uint256(paymentUsdPrice / linkUsdPrice);
+    }
+
+    function _getSwapPaymentLinkMinOut(uint256 paymentAmt) internal view returns (uint256) {
+        uint256 linkAmt = paymentAmt * _getPaymentLinkPrice();
+        uint256 slippageAmt = (linkAmt * UNISWAP_SLIPPAGE_TOLERANCE_PERCENT) / 100;
+        return linkAmt - slippageAmt;
     }
 
     /**

@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "./interfaces/IUpkeepRefunder.sol";
 
 interface DssVestLike {
@@ -42,6 +43,7 @@ interface KeeperRegistryLike {
  */
 contract DssVestTopUp is IUpkeepRefunder, Ownable {
     uint24 public constant UNISWAP_POOL_FEE = 3000;
+    uint24 public constant UNISWAP_SLIPPAGE_TOLERANCE_PERCENT = 2;
 
     DssVestLike public immutable dssVest;
     DaiJoinLike public immutable daiJoin;
@@ -50,6 +52,8 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
     address public immutable vow;
     address public immutable paymentToken;
     address public immutable linkToken;
+    address public immutable paymentUsdPriceFeed;
+    address public immutable linkUsdPriceFeed;
     uint256 public vestId;
     uint256 public upkeepId;
     uint256 public minWithdrawAmt;
@@ -75,6 +79,8 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
         address _keeperRegistry,
         address _swapRouter,
         address _linkToken,
+        address _paymentUsdPriceFeed,
+        address _linkUsdPriceFeed,
         uint256 _minWithdrawAmt,
         uint256 _maxDepositAmt,
         uint256 _threshold
@@ -86,6 +92,8 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
         require(_keeperRegistry != address(0), "invalid keeperRegistry address");
         require(_swapRouter != address(0), "invalid swapRouter address");
         require(_linkToken != address(0), "invalid linkToken address");
+        require(_paymentUsdPriceFeed != address(0), "invalid paymentUsdPriceFeed address");
+        require(_linkUsdPriceFeed != address(0), "invalid linkUsdPriceFeed address");
         require(_minWithdrawAmt > 0, "invalid minWithdrawAmt");
         require(_maxDepositAmt > 0, "invalid maxDepositAmt");
         require(_threshold > 0, "invalid threshold");
@@ -97,12 +105,14 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
         keeperRegistry = KeeperRegistryLike(_keeperRegistry);
         swapRouter = ISwapRouter(_swapRouter);
         linkToken = _linkToken;
+        paymentUsdPriceFeed = _paymentUsdPriceFeed;
+        linkUsdPriceFeed = _linkUsdPriceFeed;
         setMinWithdrawAmt(_minWithdrawAmt);
         setMaxDepositAmt(_maxDepositAmt);
         setThreshold(_threshold);
     }
 
-    modifier initialized () {
+    modifier initialized() {
         require(vestId > 0, "vestId not set");
         require(upkeepId > 0, "upkeepId not set");
         _;
@@ -171,7 +181,7 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
                 recipient: address(this),
                 deadline: block.timestamp,
                 amountIn: amount,
-                amountOutMinimum: 0,
+                amountOutMinimum: _getPaymentLinkSwapOutMin(amount),
                 sqrtPriceLimitX96: 0
             });
         amountOut = swapRouter.exactInputSingle(params);
@@ -182,6 +192,50 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
         TransferHelper.safeApprove(linkToken, address(keeperRegistry), amount);
         keeperRegistry.addFunds(upkeepId, uint96(amount));
         emit UpkeepRefunded(amount);
+    }
+
+    function _getPaymentLinkSwapOutMin(uint256 amountIn) internal view returns (uint256) {
+        uint256 linkDecimals = IERC20Metadata(linkToken).decimals();
+        uint256 paymentLinkPrice = uint256(_getDerivedPrice(paymentUsdPriceFeed, linkUsdPriceFeed, uint8(linkDecimals)));
+
+        uint256 paymentDecimals = IERC20Metadata(paymentToken).decimals();
+        uint256 paymentAmt = uint256(_scalePrice(int256(amountIn), uint8(paymentDecimals), uint8(linkDecimals)));
+
+        uint256 linkAmt = (paymentAmt * paymentLinkPrice) / 10 ** linkDecimals;
+        uint256 slippageTolerance = (linkAmt * UNISWAP_SLIPPAGE_TOLERANCE_PERCENT) / 100;
+
+        return linkAmt - slippageTolerance;
+    }
+
+    function _getDerivedPrice(address _base, address _quote, uint8 _decimals)
+        internal
+        view
+        returns (int256)
+    {
+        require(_decimals > uint8(0) && _decimals <= uint8(18), "invalid decimals");
+        int256 decimals = int256(10 ** uint256(_decimals));
+        ( , int256 basePrice, , , ) = AggregatorV3Interface(_base).latestRoundData();
+        uint8 baseDecimals = AggregatorV3Interface(_base).decimals();
+        basePrice = _scalePrice(basePrice, baseDecimals, _decimals);
+
+        ( , int256 quotePrice, , , ) = AggregatorV3Interface(_quote).latestRoundData();
+        uint8 quoteDecimals = AggregatorV3Interface(_quote).decimals();
+        quotePrice = _scalePrice(quotePrice, quoteDecimals, _decimals);
+
+        return basePrice * decimals / quotePrice;
+    }
+
+    function _scalePrice(int256 _price, uint8 _priceDecimals, uint8 _decimals)
+        internal
+        pure
+        returns (int256)
+    {
+        if (_priceDecimals < _decimals) {
+            return _price * int256(10 ** uint256(_decimals - _priceDecimals));
+        } else if (_priceDecimals > _decimals) {
+            return _price / int256(10 ** uint256(_priceDecimals - _decimals));
+        }
+        return _price;
     }
 
     /**

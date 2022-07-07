@@ -9,8 +9,13 @@ import { ProcessEnv } from "../types";
 const { parseEther, keccak256, formatBytes32String, toUtf8Bytes } =
   ethers.utils;
 
-const { STAGING_KEEPER_REGISTRY, STAGING_SWAP_ROUTER, STAGING_LINK_TOKEN } =
-  process.env as ProcessEnv;
+const {
+  STAGING_KEEPER_REGISTRY,
+  STAGING_SWAP_ROUTER,
+  STAGING_LINK_TOKEN,
+  STAGING_PAYMENT_USD_PRICE_FEED,
+  STAGING_LINK_USD_PRICE_FEED,
+} = process.env as ProcessEnv;
 
 async function main() {
   // Hardhat always runs the compile task when running scripts with its command
@@ -20,7 +25,13 @@ async function main() {
   // manually to make sure everything is compiled
   // await hre.run('compile');
 
-  if (!STAGING_KEEPER_REGISTRY || !STAGING_SWAP_ROUTER || !STAGING_LINK_TOKEN) {
+  if (
+    !STAGING_KEEPER_REGISTRY ||
+    !STAGING_SWAP_ROUTER ||
+    !STAGING_LINK_TOKEN ||
+    !STAGING_PAYMENT_USD_PRICE_FEED ||
+    !STAGING_LINK_USD_PRICE_FEED
+  ) {
     throw new Error("Missing required env variables!");
   }
 
@@ -71,13 +82,15 @@ async function main() {
     STAGING_KEEPER_REGISTRY,
     STAGING_SWAP_ROUTER,
     STAGING_LINK_TOKEN,
+    STAGING_PAYMENT_USD_PRICE_FEED,
+    STAGING_LINK_USD_PRICE_FEED,
     parseEther("0"), // no minWithdraw
     parseEther("10"),
     20
   );
   console.log("DssVestTopUp deployed to:", topUp.address);
 
-  await keeper.setTopUp(topUp.address);
+  await keeper.setUpkeepRefunder(topUp.address);
   console.log("DssCronKeeper topUp set to:", topUp.address);
 
   // create vest for topup contract

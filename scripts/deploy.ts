@@ -18,6 +18,8 @@ const {
   KEEPER_REGISTRY,
   SWAP_ROUTER,
   LINK_TOKEN,
+  PAYMENT_USD_PRICE_FEED,
+  LINK_USD_PRICE_FEED,
   MIN_WITHDRAW_AMT,
   MAX_DEPOSIT_AMT,
   BALANCE_THRESHOLD,
@@ -41,6 +43,8 @@ async function main() {
     !KEEPER_REGISTRY ||
     !SWAP_ROUTER ||
     !LINK_TOKEN ||
+    !PAYMENT_USD_PRICE_FEED ||
+    !LINK_USD_PRICE_FEED ||
     !MIN_WITHDRAW_AMT ||
     !MAX_DEPOSIT_AMT ||
     !BALANCE_THRESHOLD
@@ -65,6 +69,8 @@ async function main() {
     KEEPER_REGISTRY,
     SWAP_ROUTER,
     LINK_TOKEN,
+    PAYMENT_USD_PRICE_FEED,
+    LINK_USD_PRICE_FEED,
     parseEther(MIN_WITHDRAW_AMT),
     parseEther(MAX_DEPOSIT_AMT),
     parseEther(BALANCE_THRESHOLD)
@@ -72,7 +78,7 @@ async function main() {
   await topUp.deployed();
   console.log("DssVestTopUp deployed to:", topUp.address);
 
-  keeper.setTopUp(topUp.address);
+  keeper.setUpkeepRefunder(topUp.address);
   console.log("DssCronKeeper topUp set to:", topUp.address);
 
   console.log("TODO: Create proposal for DssVestTopUp to MakerDAO");

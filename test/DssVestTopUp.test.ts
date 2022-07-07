@@ -8,23 +8,31 @@ import {
   DssVestTopUp,
   ERC20PresetMinterPauser,
   KeeperRegistryMock,
+  SwapRouterMock,
 } from "../typechain";
 
-const { AddressZero } = ethers.constants;
 const { formatBytes32String, toUtf8Bytes, keccak256 } = ethers.utils;
+
+const fakeVow = "0xA950524441892A31ebddF91d3cEEFa04Bf454466";
 
 describe("DssVestTopUp", function () {
   const minWithdrawAmt = BigNumber.from(100);
   const maxDepositAmt = BigNumber.from(1000);
   const initialUpkeepBalance = BigNumber.from(150);
   const threshold = BigNumber.from(1000);
+  const paymentUsdPrice = 1;
+  const linkUsdPrice = 5;
+  const usdFeedDecimals = 8;
 
   let topUp: DssVestTopUp;
   let dssVest: DssVestMintable;
   let vestId: BigNumber;
   let token: ERC20PresetMinterPauser;
+  let linkToken: ERC20PresetMinterPauser;
   let keeperRegistryMock: KeeperRegistryMock;
   let daiJoinMock: DaiJoinMock;
+  let swapRouterMock: SwapRouterMock;
+  let slippageTolerancePercentage: number;
 
   let admin: SignerWithAddress;
 
@@ -44,6 +52,8 @@ describe("DssVestTopUp", function () {
       dssVest.address
     );
 
+    linkToken = await ERC20.deploy("Chainlink", "LINK");
+
     const DaiJoinMock = await ethers.getContractFactory("DaiJoinMock");
     daiJoinMock = await DaiJoinMock.deploy();
 
@@ -56,23 +66,40 @@ describe("DssVestTopUp", function () {
 
     // setup uniswap router mock
     const SwapRouterMock = await ethers.getContractFactory("SwapRouterMock");
-    const swapRouterMock = await SwapRouterMock.deploy();
+    swapRouterMock = await SwapRouterMock.deploy();
+
+    // setup price feed mocks
+    const MockV3Aggregator = await ethers.getContractFactory(
+      "MockV3Aggregator"
+    );
+    const paymentUsdPriceFeedMock = await MockV3Aggregator.deploy(
+      usdFeedDecimals,
+      paymentUsdPrice
+    );
+    const linkUsdPriceFeedMock = await MockV3Aggregator.deploy(
+      usdFeedDecimals,
+      linkUsdPrice
+    );
 
     // setup topup contract
     const DssVestTopUp = await ethers.getContractFactory("DssVestTopUp");
     topUp = await DssVestTopUp.deploy(
       dssVest.address,
       daiJoinMock.address,
-      AddressZero, // vow
+      fakeVow,
       token.address,
       keeperRegistryMock.address,
       swapRouterMock.address,
-      AddressZero, // LINK token
+      linkToken.address,
+      paymentUsdPriceFeedMock.address,
+      linkUsdPriceFeedMock.address,
       minWithdrawAmt,
       maxDepositAmt,
       threshold
     );
     await topUp.setUpkeepId(1);
+    slippageTolerancePercentage =
+      await topUp.UNISWAP_SLIPPAGE_TOLERANCE_PERCENT();
 
     // create vest for topup contract
     const blockNum = await ethers.provider.getBlockNumber();
@@ -122,51 +149,90 @@ describe("DssVestTopUp", function () {
   });
 
   describe("topUp", function () {
-    beforeEach(async function () {
-      await network.provider.send("evm_increaseTime", [1000]);
-      await network.provider.send("evm_mine");
+    context("accrued tokens", async function () {
+      beforeEach(async function () {
+        await network.provider.send("evm_increaseTime", [1000]);
+        await network.provider.send("evm_mine");
+      });
+
+      it("should vest accrued tokens", async function () {
+        const unpaid = await dssVest.unpaid(vestId);
+        await topUp.refundUpkeep();
+        const vested = await token.balanceOf(topUp.address);
+
+        expect(unpaid).to.eq(vested);
+      });
+
+      it("should return excess payment to surplus buffer", async function () {
+        const unpaid = await dssVest.unpaid(vestId);
+        const topUpTx = await topUp.refundUpkeep();
+
+        // get join event data from mock
+        const topUpRc = await topUpTx.wait();
+        const joinEvent = topUpRc.events?.find(
+          (e) => e.address === daiJoinMock.address
+        );
+        const abiCoder = new ethers.utils.AbiCoder();
+        const [vowAddr, joinAmt] = abiCoder.decode(
+          ["address", "uint256"],
+          joinEvent?.data || ""
+        );
+
+        expect(vowAddr).to.eq(fakeVow);
+        expect(joinAmt).to.eq(unpaid.sub(maxDepositAmt));
+      });
+
+      it("should fund upkeep", async function () {
+        await topUp.refundUpkeep();
+
+        const upkeepInfo = await keeperRegistryMock.getUpkeep(0);
+        expect(upkeepInfo.balance).to.eq(
+          maxDepositAmt.add(initialUpkeepBalance)
+        );
+      });
+
+      it("should swap with slippage protection", async function () {
+        const refundTx = await topUp.refundUpkeep();
+
+        // get event data from mock
+        const refundRc = await refundTx.wait();
+        const callMockEvent = refundRc.events?.find(
+          (e) => e.address === swapRouterMock.address
+        );
+        const abiCoder = new ethers.utils.AbiCoder();
+        const [amountIn, amountOutMinimum] = abiCoder.decode(
+          ["uint256", "uint256"],
+          callMockEvent?.data || ""
+        );
+
+        const paymentLinkPrice = paymentUsdPrice / linkUsdPrice;
+        const linkAmtOut = amountIn * paymentLinkPrice;
+        const expectedLinkOutWithSlippage =
+          linkAmtOut - (linkAmtOut * slippageTolerancePercentage) / 100;
+
+        expect(amountOutMinimum).to.eq(expectedLinkOutWithSlippage);
+      });
     });
 
-    it("should vest accrued tokens", async function () {
-      const unpaid = await dssVest.unpaid(vestId);
-      await topUp.refundUpkeep();
-      const vested = await token.balanceOf(topUp.address);
-
-      expect(unpaid).to.eq(vested);
-    });
-
-    it("should return excess payment to surplus buffer", async function () {
-      const unpaid = await dssVest.unpaid(vestId);
-      const topUpTx = await topUp.refundUpkeep();
-
-      // get join event data from mock
-      const topUpRc = await topUpTx.wait();
-      const joinEvent = topUpRc.events?.find(
-        (e) => e.address === daiJoinMock.address
-      );
-      const abiCoder = new ethers.utils.AbiCoder();
-      const [vowAddr, joinAmt] = abiCoder.decode(
-        ["address", "uint256"],
-        joinEvent?.data || ""
-      );
-
-      expect(vowAddr).to.eq(AddressZero);
-      expect(joinAmt).to.eq(unpaid.sub(maxDepositAmt));
-    });
-
-    it("should fund upkeep", async function () {
-      await topUp.refundUpkeep();
-
-      const upkeepInfo = await keeperRegistryMock.getUpkeep(0);
-      expect(upkeepInfo.balance).to.eq(maxDepositAmt.add(initialUpkeepBalance));
-    });
-
-    it("emergency topup", async function () {
-      await token.mint(topUp.address, 100);
+    it("should fund with emergency topup", async function () {
+      await token.mint(topUp.address, minWithdrawAmt);
       await topUp.refundUpkeep();
 
       const upkeepInfo = await keeperRegistryMock.getUpkeep(0);
       expect(upkeepInfo.balance).to.eq(initialUpkeepBalance.add(100));
+    });
+
+    it("should fail if emergency topup below threshold", async function () {
+      await token.mint(topUp.address, 1);
+      await expect(topUp.refundUpkeep()).to.be.revertedWith(
+        "refund not needed"
+      );
+    });
+
+    it("should not top up if not needed", async function () {
+      await expect(topUp.refundUpkeep()).to.be.revertedWith(
+        "refund not needed"
+      );
     });
   });
 });

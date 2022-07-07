@@ -13,11 +13,20 @@ contract SwapRouterMock {
         uint160 sqrtPriceLimitX96;
     }
 
+    event ExactInputSingleCalledWith(
+        uint256 amountIn,
+        uint256 amountOutMinimum
+    );
+
     function exactInputSingle(ExactInputSingleParams calldata params)
         external
         payable
         returns (uint256 amountOut)
     {
+        emit ExactInputSingleCalledWith(
+            params.amountIn,
+            params.amountOutMinimum
+        );
         amountOut = params.amountIn;
     }
 }

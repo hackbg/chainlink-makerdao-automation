@@ -27,6 +27,12 @@ const config: HardhatUserConfig = {
     compilers: [
       {
         version: "0.8.9",
+        settings: {
+          optimizer: {
+            runs: 200,
+            enabled: true,
+          },
+        },
       },
       {
         version: "0.7.6",

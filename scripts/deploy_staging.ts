@@ -70,6 +70,7 @@ async function main() {
   // setup dss-cron
   const Sequencer = await ethers.getContractFactory("Sequencer");
   const sequencer = await Sequencer.deploy();
+  await sequencer.deployed();
   console.log("Sequencer deployed to:", sequencer.address);
   await sequencer.file(
     formatBytes32String("window"),
@@ -79,6 +80,7 @@ async function main() {
   await sequencer.addNetwork(formatBytes32String("test2"));
   const SampleJob = await ethers.getContractFactory("SampleJob");
   const job = await SampleJob.deploy(sequencer.address, 100);
+  await job.deployed();
   console.log("SampleJob deployed to:", job.address);
   await sequencer.addJob(job.address);
 
@@ -87,16 +89,19 @@ async function main() {
     sequencer.address,
     formatBytes32String("test1")
   );
+  await keeper.deployed();
   console.log("DssCronKeeper deployed to:", keeper.address);
 
   // setup dss-vest
   const ERC20 = await ethers.getContractFactory("ERC20PresetMinterPauser");
   const paymentToken = await ERC20.deploy("Test", "TST");
+  await paymentToken.deployed();
   console.log("Test payment token deployed to:", paymentToken.address);
   await paymentToken.mint(admin.address, PAYMENT_TOKEN_MINT_AMOUNT);
   console.log("Minted Test payment tokens to admin address");
   const DssVest = await ethers.getContractFactory("DssVestMintable");
   const dssVest = await DssVest.deploy(paymentToken.address);
+  await dssVest.deployed();
   console.log("DssVest deployed to:", dssVest.address);
   await dssVest.file(formatBytes32String("cap"), DSS_VEST_CAP);
   await paymentToken.grantRole(
@@ -105,6 +110,7 @@ async function main() {
   );
   const DaiJoinMock = await ethers.getContractFactory("DaiJoinMock");
   const daiJoinMock = await DaiJoinMock.deploy();
+  await daiJoinMock.deployed();
 
   const DssVestTopUp = await ethers.getContractFactory("DssVestTopUp");
   const topUp = await DssVestTopUp.deploy(
@@ -121,6 +127,7 @@ async function main() {
     TopUpParams.MAX_DEPOSIT_AMT_PAYMENT_TOKEN,
     TopUpParams.THRESHOLD_LINK
   );
+  await topUp.deployed();
   console.log("DssVestTopUp deployed to:", topUp.address);
 
   await keeper.setUpkeepRefunder(topUp.address);

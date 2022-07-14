@@ -17,6 +17,31 @@ const {
   STAGING_LINK_USD_PRICE_FEED,
 } = process.env as ProcessEnv;
 
+const SEQUENCER_WINDOW_IN_BLOCKS = 13;
+const PAYMENT_TOKEN_MINT_AMOUNT = parseEther("1000000");
+const DSS_VEST_CAP = parseEther("1"); // Maximum per-second issuance token rate
+
+const TopUpParams = {
+  MIN_WITHDRAW_AMT_PAYMENT_TOKEN: parseEther("1"),
+  MAX_DEPOSIT_AMT_PAYMENT_TOKEN: parseEther("3"),
+  THRESHOLD_LINK: parseEther("7"),
+};
+
+const VestParams = {
+  TOTAL_AMOUNT_VESTING_PLAN: parseEther("100"),
+  DURATION_IN_SEC_VESTING_PLAN: 1000,
+  CLIFF_PERIOD_IN_SEC: 0,
+};
+
+const UpkeepParams = {
+  NAME: "test123",
+  ADMIN_EMAIL: "test@example.com",
+  GAS_LIMIT: 500000,
+  INITIAL_FUNDING: ethers.utils.parseEther("8"),
+  CHECK_DATA: "0x",
+  SOURCE_ID: 4,
+};
+
 async function main() {
   // Hardhat always runs the compile task when running scripts with its command
   // line interface.
@@ -41,7 +66,10 @@ async function main() {
   const Sequencer = await ethers.getContractFactory("Sequencer");
   const sequencer = await Sequencer.deploy();
   console.log("Sequencer deployed to:", sequencer.address);
-  await sequencer.file(formatBytes32String("window"), 10);
+  await sequencer.file(
+    formatBytes32String("window"),
+    SEQUENCER_WINDOW_IN_BLOCKS
+  );
   await sequencer.addNetwork(formatBytes32String("test1"));
   await sequencer.addNetwork(formatBytes32String("test2"));
   const SampleJob = await ethers.getContractFactory("SampleJob");
@@ -60,12 +88,12 @@ async function main() {
   const ERC20 = await ethers.getContractFactory("ERC20PresetMinterPauser");
   const paymentToken = await ERC20.deploy("Test", "TST");
   console.log("Test payment token deployed to:", paymentToken.address);
-  await paymentToken.mint(admin.address, parseEther("1000000"));
-  console.log("Minted 1000000 Test payment tokens to default address");
+  await paymentToken.mint(admin.address, PAYMENT_TOKEN_MINT_AMOUNT);
+  console.log("Minted Test payment tokens to admin address");
   const DssVest = await ethers.getContractFactory("DssVestMintable");
   const dssVest = await DssVest.deploy(paymentToken.address);
   console.log("DssVest deployed to:", dssVest.address);
-  await dssVest.file(formatBytes32String("cap"), parseEther("1"));
+  await dssVest.file(formatBytes32String("cap"), DSS_VEST_CAP);
   await paymentToken.grantRole(
     keccak256(toUtf8Bytes("MINTER_ROLE")),
     dssVest.address
@@ -84,9 +112,9 @@ async function main() {
     STAGING_LINK_TOKEN,
     STAGING_PAYMENT_USD_PRICE_FEED,
     STAGING_LINK_USD_PRICE_FEED,
-    parseEther("0"), // no minWithdraw
-    parseEther("10"),
-    20
+    TopUpParams.MIN_WITHDRAW_AMT_PAYMENT_TOKEN,
+    TopUpParams.MAX_DEPOSIT_AMT_PAYMENT_TOKEN,
+    TopUpParams.THRESHOLD_LINK
   );
   console.log("DssVestTopUp deployed to:", topUp.address);
 
@@ -99,10 +127,10 @@ async function main() {
   const now = block.timestamp;
   const createVestTx = await dssVest.create(
     topUp.address,
-    parseEther("100"), // total amount of vesting plan
+    VestParams.TOTAL_AMOUNT_VESTING_PLAN,
     now,
-    1000,
-    0,
+    VestParams.DURATION_IN_SEC_VESTING_PLAN,
+    VestParams.CLIFF_PERIOD_IN_SEC,
     admin.address
   );
   const createVestRc = await createVestTx.wait();

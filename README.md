@@ -44,10 +44,13 @@ Copy the `.env.example` to `.env` file and make sure you've set all of the follo
 | `MAX_DEPOSIT_AMT`                | Maximum amount of `PAYMENT_TOKOEN` allowed to fund an upkeep. The excess amount is returned to the [Surplus Buffer](https://manual.makerdao.com/parameter-index/core/param-system-surplus-buffer). |
 | `BALANCE_THRESHOLD`              | Upkeep LINK balance threshold                                                                                                                                                                      |
 | `STAGING_KEEPER_REGISTRY`        | Address of KeeperRegistry on testnet for staging environment                                                                                                                                       |
+| `STAGING_KEEPER_REGISTRAR`        | Address of KeeperRegistrar on testnet used for automatically registering Upkeeps for staging environment. The deployer account needs to have enough LINK balance for the initial funding.                                                                                                                                       |
 | `STAGING_SWAP_ROUTER`            | Address of Uniswap V3 Router on testnet                                                                                                                                                            |
 | `STAGING_LINK_TOKEN`             | Address of ERC-20 token like LINK on testnet                                                                                                                                                       |
 | `STAGING_PAYMENT_USD_PRICE_FEED` | Chainlink price feed for the DAI / USD pair on testnet                                                                                                                                             |
 | `STAGING_LINK_USD_PRICE_FEED`    | Chainlink price feed for the LINK / USD pair on testnet                                                                                                                                            |
+
+Note: All example values are the actual values for Ethereum Mainnet and the staging ones for Kovan testnet.
 
 ## Test
 

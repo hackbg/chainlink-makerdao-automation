@@ -5,12 +5,14 @@
 // Runtime Environment's members available in the global scope.
 import { ethers } from "hardhat";
 import { ProcessEnv } from "../types";
+import { registerUpkeep } from "./utils/keepers";
 
 const { parseEther, keccak256, formatBytes32String, toUtf8Bytes } =
   ethers.utils;
 
 const {
   STAGING_KEEPER_REGISTRY,
+  STAGING_KEEPER_REGISTRAR,
   STAGING_SWAP_ROUTER,
   STAGING_LINK_TOKEN,
   STAGING_PAYMENT_USD_PRICE_FEED,
@@ -54,6 +56,7 @@ async function main() {
 
   if (
     !STAGING_KEEPER_REGISTRY ||
+    !STAGING_KEEPER_REGISTRAR ||
     !STAGING_SWAP_ROUTER ||
     !STAGING_LINK_TOKEN ||
     !STAGING_PAYMENT_USD_PRICE_FEED ||
@@ -140,9 +143,23 @@ async function main() {
   const [createVestValue] = createVestEvent?.args || [];
   await topUp.setVestId(createVestValue);
 
+  const upkeepId = await registerUpkeep(
+    keeper.address,
+    STAGING_LINK_TOKEN,
+    STAGING_KEEPER_REGISTRAR,
+    admin.address,
+    UpkeepParams.ADMIN_EMAIL,
+    UpkeepParams.NAME,
+    UpkeepParams.GAS_LIMIT,
+    UpkeepParams.INITIAL_FUNDING,
+    UpkeepParams.CHECK_DATA,
+    UpkeepParams.SOURCE_ID
+  );
+  console.log("Upkeep registered for DssCronKeeper with ID", upkeepId);
+  await topUp.setUpkeepId(upkeepId);
+  console.log("Upkeep ID set to DssVestTopUp contract");
+
   console.log("TODO: Create a Uniswap pool for Test token and LINK");
-  console.log("TODO: Register DssCronKeeper as upkeep");
-  console.log("TODO: Once upkeep is approved call DssVestTopUp.setUpkeepId");
 }
 
 // We recommend this pattern to be able to use async/await everywhere

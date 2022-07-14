@@ -35,9 +35,10 @@ describe("DssVestTopUp", function () {
   let slippageTolerancePercentage: number;
 
   let admin: SignerWithAddress;
+  let user: SignerWithAddress;
 
   before(async function () {
-    [admin] = await ethers.getSigners();
+    [admin, user] = await ethers.getSigners();
   });
 
   beforeEach(async function () {
@@ -98,8 +99,7 @@ describe("DssVestTopUp", function () {
       threshold
     );
     await topUp.setUpkeepId(1);
-    slippageTolerancePercentage =
-      await topUp.UNISWAP_SLIPPAGE_TOLERANCE_PERCENT();
+    slippageTolerancePercentage = await topUp.uniswapSlippageTolerancePercent();
 
     // create vest for topup contract
     const blockNum = await ethers.provider.getBlockNumber();
@@ -232,6 +232,34 @@ describe("DssVestTopUp", function () {
     it("should not top up if not needed", async function () {
       await expect(topUp.refundUpkeep()).to.be.revertedWith(
         "refund not needed"
+      );
+    });
+  });
+
+  describe("Owner", async function () {
+    it("should update slippage tolerance percent", async function () {
+      const oldSlippagePercent = await topUp.uniswapSlippageTolerancePercent();
+      await topUp.setSlippageTolerancePercent(5);
+      const newSlippagePercent = await topUp.uniswapSlippageTolerancePercent();
+      expect(oldSlippagePercent).to.not.eq(newSlippagePercent);
+    });
+
+    it("should update pool fee", async function () {
+      const oldPoolFee = await topUp.uniswapPoolFee();
+      await topUp.setUniswapPoolFee(10000);
+      const newPoolFee = await topUp.uniswapPoolFee();
+      expect(oldPoolFee).to.not.eq(newPoolFee);
+    });
+
+    it("should not allow user to update slippage tolerance percent", async function () {
+      await expect(
+        topUp.connect(user).setSlippageTolerancePercent(1)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("should not allow user to update pool fee", async function () {
+      await expect(topUp.connect(user).setUniswapPoolFee(1)).to.be.revertedWith(
+        "Ownable: caller is not the owner"
       );
     });
   });

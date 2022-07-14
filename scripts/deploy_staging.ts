@@ -42,6 +42,8 @@ const UpkeepParams = {
   SOURCE_ID: 4,
 };
 
+const FAKE_VOW_ADDRESS = "0xA950524441892A31ebddF91d3cEEFa04Bf454466";
+
 async function main() {
   // Hardhat always runs the compile task when running scripts with its command
   // line interface.
@@ -105,7 +107,7 @@ async function main() {
   const topUp = await DssVestTopUp.deploy(
     dssVest.address,
     daiJoinMock.address,
-    ethers.constants.AddressZero, // vow
+    FAKE_VOW_ADDRESS,
     paymentToken.address,
     STAGING_KEEPER_REGISTRY,
     STAGING_SWAP_ROUTER,

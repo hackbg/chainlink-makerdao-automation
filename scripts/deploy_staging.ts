@@ -134,6 +134,9 @@ async function main() {
   await topUp.deployed();
   console.log("DssVestTopUp deployed to:", topUp.address);
 
+  // increase slippage tolerance to be able to swap using Test token as payment
+  await topUp.setSlippageTolerancePercent(99);
+
   await keeper.setUpkeepRefunder(topUp.address);
   console.log("DssCronKeeper topUp set to:", topUp.address);
 

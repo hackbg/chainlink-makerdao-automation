@@ -83,6 +83,10 @@ async function main() {
   await job.deployed();
   console.log("SampleJob deployed to:", job.address);
   await sequencer.addJob(job.address);
+  const job2 = await SampleJob.deploy(sequencer.address, 200);
+  await job2.deployed();
+  console.log("SampleJob 2 deployed to:", job2.address);
+  await sequencer.addJob(job2.address);
 
   const DssCronKeeper = await ethers.getContractFactory("DssCronKeeper");
   const keeper = await DssCronKeeper.deploy(

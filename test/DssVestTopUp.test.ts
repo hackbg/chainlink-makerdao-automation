@@ -262,5 +262,20 @@ describe("DssVestTopUp", function () {
         "Ownable: caller is not the owner"
       );
     });
+
+    it("should change keeper registry", async function () {
+      const oldKeeperRegistry = await topUp.keeperRegistry();
+
+      await topUp.setKeeperRegistry(admin.address);
+      const newKeeperRegistry = await topUp.keeperRegistry();
+
+      expect(oldKeeperRegistry).to.not.eq(newKeeperRegistry);
+    });
+
+    it("should not allow owner change keeper registry", async function () {
+      await expect(
+        topUp.connect(user).setKeeperRegistry(admin.address)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
   });
 });

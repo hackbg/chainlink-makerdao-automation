@@ -44,13 +44,13 @@ interface KeeperRegistryLike {
 contract DssVestTopUp is IUpkeepRefunder, Ownable {
     DssVestLike public immutable dssVest;
     DaiJoinLike public immutable daiJoin;
-    KeeperRegistryLike public immutable keeperRegistry;
     ISwapRouter public immutable swapRouter;
     address public immutable vow;
     address public immutable paymentToken;
     address public immutable linkToken;
     address public immutable paymentUsdPriceFeed;
     address public immutable linkUsdPriceFeed;
+    KeeperRegistryLike public keeperRegistry;
     uint24 public uniswapPoolFee = 3000;
     uint24 public uniswapSlippageTolerancePercent = 2;
     uint256 public vestId;
@@ -299,4 +299,7 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
         uniswapSlippageTolerancePercent = _uniswapSlippageTolerancePercent;
     }
 
+    function setKeeperRegistry(address _keeperRegistry) public onlyOwner {
+        keeperRegistry = KeeperRegistryLike(_keeperRegistry);
+    }
 }

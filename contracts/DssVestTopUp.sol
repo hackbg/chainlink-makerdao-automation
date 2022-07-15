@@ -42,9 +42,6 @@ interface KeeperRegistryLike {
  * funds an upkeep after swapping the payment tokens for LINK
  */
 contract DssVestTopUp is IUpkeepRefunder, Ownable {
-    uint24 public constant UNISWAP_POOL_FEE = 3000;
-    uint24 public constant UNISWAP_SLIPPAGE_TOLERANCE_PERCENT = 2;
-
     DssVestLike public immutable dssVest;
     DaiJoinLike public immutable daiJoin;
     KeeperRegistryLike public immutable keeperRegistry;
@@ -54,6 +51,8 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
     address public immutable linkToken;
     address public immutable paymentUsdPriceFeed;
     address public immutable linkUsdPriceFeed;
+    uint24 public uniswapPoolFee = 3000;
+    uint24 public uniswapSlippageTolerancePercent = 2;
     uint256 public vestId;
     uint256 public upkeepId;
     uint256 public minWithdrawAmt;
@@ -177,7 +176,7 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
             .ExactInputSingleParams({
                 tokenIn: paymentToken,
                 tokenOut: linkToken,
-                fee: UNISWAP_POOL_FEE,
+                fee: uniswapPoolFee,
                 recipient: address(this),
                 deadline: block.timestamp,
                 amountIn: amount,
@@ -202,7 +201,7 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
         uint256 paymentAmt = uint256(_scalePrice(int256(amountIn), uint8(paymentDecimals), uint8(linkDecimals)));
 
         uint256 linkAmt = (paymentAmt * paymentLinkPrice) / 10 ** linkDecimals;
-        uint256 slippageTolerance = (linkAmt * UNISWAP_SLIPPAGE_TOLERANCE_PERCENT) / 100;
+        uint256 slippageTolerance = (linkAmt * uniswapSlippageTolerancePercent) / 100;
 
         return linkAmt - slippageTolerance;
     }
@@ -289,4 +288,15 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
         threshold = _threshold;
         emit ThresholdUpdated(_threshold);
     }
+    
+     function setUniswapPoolFee(uint24 _uniSwapPoolFee) public onlyOwner {
+        uniswapPoolFee = _uniSwapPoolFee;
+    }
+
+    function setSlippageTolerancePercent(
+        uint24 _uniswapSlippageTolerancePercent
+    ) public onlyOwner {
+        uniswapSlippageTolerancePercent = _uniswapSlippageTolerancePercent;
+    }
+
 }

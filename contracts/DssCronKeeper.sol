@@ -10,6 +10,8 @@ interface SequencerLike {
     function numJobs() external view returns (uint256);
 
     function jobAt(uint256 index) external view returns (address);
+
+    function isMaster(bytes32 network) external view returns (bool);
 }
 
 /**
@@ -82,12 +84,14 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
      * @return args for the job's work function
      */
     function _getWorkableJob() internal returns (address, bytes memory) {
-        for (uint256 i = 0; i < sequencer.numJobs(); i++) {
-            address job = sequencer.jobAt(i);
-            (bool canWork, bytes memory args) = IJob(job).workable(network);
-            if (canWork) return (job, args);
+        if (sequencer.isMaster(network)) {
+            for (uint256 i = 0; i < sequencer.numJobs(); i++) {
+                address job = sequencer.jobAt(i);
+                (bool canWork, bytes memory args) = IJob(job).workable(network);
+                if (canWork) return (job, args);
+            }
         }
-        return (address(0), "");
+        return (address(0), "no pending jobs");
     }
 
     // SETTERS

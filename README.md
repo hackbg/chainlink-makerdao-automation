@@ -68,11 +68,22 @@ npx hardhat run scripts/deploy_staging.ts --network kovan
 
 ## Deploy
 
-Run to deploy all contracts to a network from Hardhat config:
+Run the following to deploy `DssVestCronKeeper.sol` and `DssVestTopUp.sol` to a network configured in Hardhat config:
 
 ```bash
-npx hardhat run scripts/deploy.ts --network mainnet
+npx hardhat run scripts/deploy_keeper.ts --network <network>
+npx hardhat run scripts/deploy_topup.ts --network <network>
 ```
+
+After successful deployment, `DssVestCronKeeper` must be [registered as new Upkeep](https://docs.chain.link/docs/chainlink-keepers/register-upkeep/) to start performing pending jobs for the configured `SEQUENCER` and `NETWORK_NAME`.
+
+To enable the Upkeep auto refunding, `DssVestCronKeeper` must be linked to a `DssVestTopUp` instance.
+
+Prior to that, the deployed `DssVestTopUp` must be initialized with `vestId` and `upkeepId` by calling the respective setter functions. To acquire `vestId`, a new application must be [submitted to MakerDAO](https://forum.makerdao.com/t/mip63-maker-keeper-network/12091). The `upkeepId` is available after registering a new Upkeep.
+
+When `DssVestTopUp` is ready, call `setUpkeepRefunder(address)` on the `DssCronKeeper` instance to finalize the setup.
+
+Note: all setter functions must be called from the contract owner account, which is the deployer account if not changed afterwards.
 
 ## References
 

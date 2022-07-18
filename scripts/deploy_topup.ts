@@ -6,11 +6,9 @@
 import { ethers } from "hardhat";
 import { ProcessEnv } from "../types";
 
-const { parseEther, formatBytes32String } = ethers.utils;
+const { parseEther } = ethers.utils;
 
 const {
-  SEQUENCER,
-  NETWORK_NAME,
   DSS_VEST,
   DAI_JOIN,
   VOW,
@@ -34,8 +32,6 @@ async function main() {
   // await hre.run('compile');
 
   if (
-    !SEQUENCER ||
-    !NETWORK_NAME ||
     !DSS_VEST ||
     !DAI_JOIN ||
     !VOW ||
@@ -51,14 +47,6 @@ async function main() {
   ) {
     throw new Error("Missing required env variables!");
   }
-
-  const DssCronKeeper = await ethers.getContractFactory("DssCronKeeper");
-  const keeper = await DssCronKeeper.deploy(
-    SEQUENCER,
-    formatBytes32String(NETWORK_NAME)
-  );
-  await keeper.deployed();
-  console.log("DssCronKeeper deployed to:", keeper.address);
 
   const DssVestTopUp = await ethers.getContractFactory("DssVestTopUp");
   const topUp = await DssVestTopUp.deploy(
@@ -77,14 +65,6 @@ async function main() {
   );
   await topUp.deployed();
   console.log("DssVestTopUp deployed to:", topUp.address);
-
-  keeper.setUpkeepRefunder(topUp.address);
-  console.log("DssCronKeeper topUp set to:", topUp.address);
-
-  console.log("TODO: Create proposal for DssVestTopUp to MakerDAO");
-  console.log("TODO: Once approved call DssVestTopUp.setVestId");
-  console.log("TODO: Register DssCronKeeper as upkeep");
-  console.log("TODO: Once upkeep is approved call DssVestTopUp.setUpkeepId");
 }
 
 // We recommend this pattern to be able to use async/await everywhere

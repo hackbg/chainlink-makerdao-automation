@@ -98,6 +98,13 @@ describe("DssCronKeeper", function () {
       );
       expect(topUpEvent).to.not.equal(undefined);
     });
+
+    it("should emit event when job is executed", async function () {
+      await expect(keeper.performUpkeep(runJobEncoded)).to.emit(
+        keeper,
+        "ExecutedJob"
+      );
+    });
   });
 
   describe("Owner", async function () {

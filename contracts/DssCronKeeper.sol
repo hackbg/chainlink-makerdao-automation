@@ -22,6 +22,8 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
     IUpkeepRefunder public upkeepRefunder;
     bytes32 public network;
 
+    event ExecutedJob(address job);
+
     constructor(address _sequencer, bytes32 _network) {
         sequencer = SequencerLike(_sequencer);
         network = _network;
@@ -65,6 +67,7 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
      */
     function runJob(address job, bytes memory args) public {
         IJob(job).work(network, args);
+        emit ExecutedJob(job);
     }
 
     /**

@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import {
   DssCronKeeper,
   DssVestTopUpMock,
@@ -96,6 +97,41 @@ describe("DssCronKeeper", function () {
         (e) => e.address === topUpMock.address
       );
       expect(topUpEvent).to.not.equal(undefined);
+    });
+  });
+
+  describe("Owner", async function () {
+    let owner: SignerWithAddress;
+    let user: SignerWithAddress;
+
+    beforeEach(async function () {
+      [owner, user] = await ethers.getSigners();
+    });
+
+    it("should allow owner to change sequencer", async function () {
+      const oldSequencer = await keeper.sequencer();
+      await keeper.connect(owner).setSequencer(job.address);
+      const newSequencer = await keeper.sequencer();
+      expect(oldSequencer).to.not.equal(newSequencer);
+    });
+
+    it("should not allow user to change sequencer", async function () {
+      await expect(
+        keeper.connect(user).setSequencer(job.address)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("should allow owner to change network name", async function () {
+      const oldNetwork = await keeper.network();
+      await keeper.connect(owner).setNetwork(formatBytes32String("test3"));
+      const newNetwork = await keeper.network();
+      expect(newNetwork).to.not.equal(oldNetwork);
+    });
+
+    it("should not allow user to change network name", async function () {
+      await expect(
+        keeper.connect(user).setNetwork(formatBytes32String("test3"))
+      ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
 });

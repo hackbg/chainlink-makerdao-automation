@@ -18,13 +18,13 @@ interface SequencerLike {
  * Checks if upkeep funding is needed and executes it.
  */
 contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
-    SequencerLike public immutable sequencer;
+    SequencerLike public sequencer;
     IUpkeepRefunder public upkeepRefunder;
     bytes32 public network;
 
     constructor(address _sequencer, bytes32 _network) {
-        sequencer = SequencerLike(_sequencer);
-        network = _network;
+        setSequencer(_sequencer);
+        setNetwork(_network);
     }
 
     // ACTIONS
@@ -94,5 +94,15 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
 
     function setUpkeepRefunder(address _upkeepRefunder) external onlyOwner {
         upkeepRefunder = IUpkeepRefunder(_upkeepRefunder);
+    }
+
+    function setNetwork(bytes32 _network) public onlyOwner {
+        require(_network.length > 0, "invalid network");
+        network = _network;
+    }
+
+    function setSequencer(address _sequencer) public onlyOwner {
+        require(_sequencer != address(0), "invalid sequencer address");
+        sequencer = SequencerLike(_sequencer);
     }
 }

@@ -59,11 +59,14 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
     uint256 public maxDepositAmt;
     uint256 public threshold;
 
-    event VestIdUpdated(uint256 newVestId);
-    event UpkeepIdUpdated(uint256 newUpkeepId);
-    event MinWithdrawAmtUpdated(uint256 newMinWithdrawAmt);
-    event MaxDepositAmtUpdated(uint256 newMaxDepositAmt);
-    event ThresholdUpdated(uint256 newThreshold);
+    event VestIdSet(uint256 newVestId);
+    event UpkeepIdSet(uint256 newUpkeepId);
+    event MinWithdrawAmtSet(uint256 newMinWithdrawAmt);
+    event MaxDepositAmtSet(uint256 newMaxDepositAmt);
+    event ThresholdSet(uint256 newThreshold);
+    event UniswapPoolFeeSet(uint24 poolFee);
+    event UniswapSlippageToleranceSet(uint24 slippageTolerancePercent);
+    event KeeperRegistrySet(address keeperRegistry);
     event VestedTokensWithdrawn(uint256 amount);
     event ExcessPaymentReturned(uint256 amount);
     event SwappedPaymentTokenForLink(uint256 amountIn, uint256 amountOut);
@@ -88,24 +91,20 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
         require(_daiJoin != address(0), "invalid daiJoin address");
         require(_vow != address(0), "invalid vow address");
         require(_paymentToken != address(0), "invalid paymentToken address");
-        require(_keeperRegistry != address(0), "invalid keeperRegistry address");
         require(_swapRouter != address(0), "invalid swapRouter address");
         require(_linkToken != address(0), "invalid linkToken address");
         require(_paymentUsdPriceFeed != address(0), "invalid paymentUsdPriceFeed address");
         require(_linkUsdPriceFeed != address(0), "invalid linkUsdPriceFeed address");
-        require(_minWithdrawAmt > 0, "invalid minWithdrawAmt");
-        require(_maxDepositAmt > 0, "invalid maxDepositAmt");
-        require(_threshold > 0, "invalid threshold");
 
         dssVest = DssVestLike(_dssVest);
         daiJoin = DaiJoinLike(_daiJoin);
         vow = _vow;
         paymentToken = _paymentToken;
-        keeperRegistry = KeeperRegistryLike(_keeperRegistry);
         swapRouter = ISwapRouter(_swapRouter);
         linkToken = _linkToken;
         paymentUsdPriceFeed = _paymentUsdPriceFeed;
         linkUsdPriceFeed = _linkUsdPriceFeed;
+        setKeeperRegistry(_keeperRegistry);
         setMinWithdrawAmt(_minWithdrawAmt);
         setMaxDepositAmt(_maxDepositAmt);
         setThreshold(_threshold);
@@ -150,7 +149,7 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
     /**
      * @notice Check whether top up is needed
      * @dev Called by the keeper
-     * @return result indicating if topping up the upkeep balance is needed and
+     * @return Result indicating if topping up the upkeep balance is needed and
      * if there's enough unpaid vested tokens or tokens in the contract balance
      */
     function shouldRefundUpkeep() public view initialized returns (bool) {
@@ -167,11 +166,11 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
 
     // HELPERS
 
-    function _swapPaymentToLink(uint256 amount)
+    function _swapPaymentToLink(uint256 _amount)
         internal
         returns (uint256 amountOut)
     {
-        TransferHelper.safeApprove(paymentToken, address(swapRouter), amount);
+        TransferHelper.safeApprove(paymentToken, address(swapRouter), _amount);
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
             .ExactInputSingleParams({
                 tokenIn: paymentToken,
@@ -179,26 +178,26 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
                 fee: uniswapPoolFee,
                 recipient: address(this),
                 deadline: block.timestamp,
-                amountIn: amount,
-                amountOutMinimum: _getPaymentLinkSwapOutMin(amount),
+                amountIn: _amount,
+                amountOutMinimum: _getPaymentLinkSwapOutMin(_amount),
                 sqrtPriceLimitX96: 0
             });
         amountOut = swapRouter.exactInputSingle(params);
-        emit SwappedPaymentTokenForLink(amount, amountOut);
+        emit SwappedPaymentTokenForLink(_amount, amountOut);
     }
 
-    function _fundUpkeep(uint256 amount) internal {
-        TransferHelper.safeApprove(linkToken, address(keeperRegistry), amount);
-        keeperRegistry.addFunds(upkeepId, uint96(amount));
-        emit UpkeepRefunded(amount);
+    function _fundUpkeep(uint256 _amount) internal {
+        TransferHelper.safeApprove(linkToken, address(keeperRegistry), _amount);
+        keeperRegistry.addFunds(upkeepId, uint96(_amount));
+        emit UpkeepRefunded(_amount);
     }
 
-    function _getPaymentLinkSwapOutMin(uint256 amountIn) internal view returns (uint256) {
+    function _getPaymentLinkSwapOutMin(uint256 _amountIn) internal view returns (uint256) {
         uint256 linkDecimals = IERC20Metadata(linkToken).decimals();
         uint256 paymentLinkPrice = uint256(_getDerivedPrice(paymentUsdPriceFeed, linkUsdPriceFeed, uint8(linkDecimals)));
 
         uint256 paymentDecimals = IERC20Metadata(paymentToken).decimals();
-        uint256 paymentAmt = uint256(_scalePrice(int256(amountIn), uint8(paymentDecimals), uint8(linkDecimals)));
+        uint256 paymentAmt = uint256(_scalePrice(int256(_amountIn), uint8(paymentDecimals), uint8(linkDecimals)));
 
         uint256 linkAmt = (paymentAmt * paymentLinkPrice) / 10 ** linkDecimals;
         uint256 slippageTolerance = (linkAmt * uniswapSlippageTolerancePercent) / 100;
@@ -239,18 +238,18 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
 
     /**
      * @dev Rescues random funds stuck
-     * @param token address of the token to rescue
+     * @param _token address of the token to rescue
      */
-    function recoverFunds(IERC20 token) external onlyOwner {
-        uint256 tokenBalance = token.balanceOf(address(this));
-        token.transfer(msg.sender, tokenBalance);
-        emit FundsRecovered(address(token), tokenBalance);
+    function recoverFunds(IERC20 _token) external onlyOwner {
+        uint256 tokenBalance = _token.balanceOf(address(this));
+        _token.transfer(msg.sender, tokenBalance);
+        emit FundsRecovered(address(_token), tokenBalance);
     }
 
     // GETTERS
 
     /**
-     * @notice Retrieve the vest payment token balance of this contract
+     * @notice Retrieve the payment token balance of this contract
      * @return balance
      */
     function getPaymentBalance() public view returns (uint256) {
@@ -262,44 +261,48 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
     function setVestId(uint256 _vestId) external onlyOwner {
         require(_vestId > 0, "invalid vestId");
         vestId = _vestId;
-        emit VestIdUpdated(_vestId);
+        emit VestIdSet(_vestId);
     }
 
     function setUpkeepId(uint256 _upkeepId) external onlyOwner {
         require(_upkeepId > 0, "invalid upkeepId");
         upkeepId = _upkeepId;
-        emit UpkeepIdUpdated(_upkeepId);
+        emit UpkeepIdSet(_upkeepId);
     }
 
     function setMinWithdrawAmt(uint256 _minWithdrawAmt) public onlyOwner {
         require(_minWithdrawAmt > 0, "invalid minWithdrawAmt");
         minWithdrawAmt = _minWithdrawAmt;
-        emit MinWithdrawAmtUpdated(_minWithdrawAmt);
+        emit MinWithdrawAmtSet(_minWithdrawAmt);
     }
 
     function setMaxDepositAmt(uint256 _maxDepositAmt) public onlyOwner {
         require(_maxDepositAmt > 0, "invalid maxDepositAmt");
         maxDepositAmt = _maxDepositAmt;
-        emit MaxDepositAmtUpdated(_maxDepositAmt);
+        emit MaxDepositAmtSet(_maxDepositAmt);
     }
 
     function setThreshold(uint256 _threshold) public onlyOwner {
         require(_threshold > 0, "invalid threshold");
         threshold = _threshold;
-        emit ThresholdUpdated(_threshold);
+        emit ThresholdSet(_threshold);
     }
-    
-     function setUniswapPoolFee(uint24 _uniSwapPoolFee) public onlyOwner {
-        uniswapPoolFee = _uniSwapPoolFee;
+
+    function setKeeperRegistry(address _keeperRegistry) public onlyOwner {
+        require(_keeperRegistry != address(0), "invalid keeperRegistry address");
+        keeperRegistry = KeeperRegistryLike(_keeperRegistry);
+        emit KeeperRegistrySet(_keeperRegistry);
+    }
+
+    function setUniswapPoolFee(uint24 _uniswapPoolFee) external onlyOwner {
+        uniswapPoolFee = _uniswapPoolFee;
+        emit UniswapPoolFeeSet(_uniswapPoolFee);
     }
 
     function setSlippageTolerancePercent(
         uint24 _uniswapSlippageTolerancePercent
-    ) public onlyOwner {
+    ) external onlyOwner {
         uniswapSlippageTolerancePercent = _uniswapSlippageTolerancePercent;
-    }
-
-    function setKeeperRegistry(address _keeperRegistry) public onlyOwner {
-        keeperRegistry = KeeperRegistryLike(_keeperRegistry);
+        emit UniswapSlippageToleranceSet(_uniswapSlippageTolerancePercent);
     }
 }

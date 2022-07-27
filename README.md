@@ -72,8 +72,8 @@ Copy the `.env.example` to `.env` file and make sure you've set all of the follo
 | `LINK_TOKEN`             | Address of ERC-20 token used for payment in KeeperRegistry                                                                                                                              |
 | `PAYMENT_USD_PRICE_FEED` | Chainlink price feed for the DAI / USD pair or the associated `PAYMENT_TOKEN` and USD                                                                                                              |
 | `LINK_USD_PRICE_FEED`    | Chainlink price feed for the LINK / USD pair                                                                                                                                                       |
-| `MIN_WITHDRAW_AMT`       | Minimum amount of `PAYMENT_TOKOEN` required to trigger top up                                                                                                                                      |
-| `MAX_DEPOSIT_AMT`        | Maximum amount of `PAYMENT_TOKOEN` allowed to fund an upkeep. The excess amount is returned to the [Surplus Buffer](https://manual.makerdao.com/parameter-index/core/param-system-surplus-buffer). |
+| `MIN_WITHDRAW_AMOUNT`       | Minimum amount of `PAYMENT_TOKOEN` required to trigger top up                                                                                                                                      |
+| `MAX_DEPOSIT_AMOUNT`        | Maximum amount of `PAYMENT_TOKOEN` allowed to fund an upkeep. The excess amount is returned to the [Surplus Buffer](https://manual.makerdao.com/parameter-index/core/param-system-surplus-buffer). |
 | `BALANCE_THRESHOLD`      | Upkeep LINK balance threshold                                                                                                                                                                      |
 
 3. Staging environment

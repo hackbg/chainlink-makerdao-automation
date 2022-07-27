@@ -18,8 +18,8 @@ const {
   LINK_TOKEN,
   PAYMENT_USD_PRICE_FEED,
   LINK_USD_PRICE_FEED,
-  MIN_WITHDRAW_AMT,
-  MAX_DEPOSIT_AMT,
+  MIN_WITHDRAW_AMOUNT,
+  MAX_DEPOSIT_AMOUNT,
   BALANCE_THRESHOLD,
 } = process.env as ProcessEnv;
 
@@ -41,8 +41,8 @@ async function main() {
     !LINK_TOKEN ||
     !PAYMENT_USD_PRICE_FEED ||
     !LINK_USD_PRICE_FEED ||
-    !MIN_WITHDRAW_AMT ||
-    !MAX_DEPOSIT_AMT ||
+    !MIN_WITHDRAW_AMOUNT ||
+    !MAX_DEPOSIT_AMOUNT ||
     !BALANCE_THRESHOLD
   ) {
     throw new Error("Missing required env variables!");
@@ -59,8 +59,8 @@ async function main() {
     LINK_TOKEN,
     PAYMENT_USD_PRICE_FEED,
     LINK_USD_PRICE_FEED,
-    parseEther(MIN_WITHDRAW_AMT),
-    parseEther(MAX_DEPOSIT_AMT),
+    parseEther(MIN_WITHDRAW_AMOUNT),
+    parseEther(MAX_DEPOSIT_AMOUNT),
     parseEther(BALANCE_THRESHOLD)
   );
   await topUp.deployed();

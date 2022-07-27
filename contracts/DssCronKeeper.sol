@@ -34,7 +34,7 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
     // ACTIONS
 
     /**
-     * @notice Check whether upkeep needs funding or there is a workable job
+     * @notice Check whether upkeep needs funding or there is a pending job
      */
     function checkUpkeep(bytes calldata)
         external
@@ -44,7 +44,7 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
         if (address(upkeepRefunder) != address(0) && upkeepRefunder.shouldRefundUpkeep()) {
             return (true, abi.encodeWithSelector(this.refundUpkeep.selector));
         }
-        (address job, bytes memory args) = _getWorkableJob();
+        (address job, bytes memory args) = _getPendingJob();
         if (job != address(0)) {
             return (true, abi.encodeWithSelector(this.runJob.selector, job, args));
         }
@@ -55,25 +55,25 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
      * @notice Execute contract function with arguments
      * @dev Called by the keeper
      */
-    function performUpkeep(bytes calldata performData) external override {
-        (bool success, ) = address(this).delegatecall(performData);
+    function performUpkeep(bytes calldata _performData) external override {
+        (bool success, ) = address(this).delegatecall(_performData);
         require(success, "failed to perform upkeep");
     }
 
     /**
      * @notice Execute cron job with params
-     * @dev Job work function checks if is still pending and still network turn,
+     * @dev The IJob work function checks if the job is pending and the network is in turn,
      * otherwise it reverts with an error
-     * @param job address
-     * @param args to pass to the work function
+     * @param _job Address of the job
+     * @param _args Arguments to pass to the job's work function
      */
-    function runJob(address job, bytes memory args) public {
-        IJob(job).work(network, args);
-        emit ExecutedJob(job);
+    function runJob(address _job, bytes memory _args) public {
+        IJob(_job).work(network, _args);
+        emit ExecutedJob(_job);
     }
 
     /**
-     * @notice Call the associated top up contract to fund the upkeep
+     * @notice Call the associated topup contract to fund the upkeep
      */
     function refundUpkeep() public {
         upkeepRefunder.refundUpkeep();
@@ -82,11 +82,10 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
     // GETTERS
 
     /**
-     * @notice Find a job pending to be executed when it's the network's turn
-     * @return job address
-     * @return args for the job's work function
+     * @notice Find a pending job when the network is in turn
+     * @return Job address and arguments for the work function
      */
-    function _getWorkableJob() internal returns (address, bytes memory) {
+    function _getPendingJob() internal returns (address, bytes memory) {
         if (sequencer.isMaster(network)) {
             for (uint256 i = 0; i < sequencer.numJobs(); i++) {
                 address job = sequencer.jobAt(i);
@@ -99,6 +98,9 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
 
     // SETTERS
 
+    /**
+     * @dev Setting it to zero address will disable the upkeep refunding
+     */
     function setUpkeepRefunder(address _upkeepRefunder) external onlyOwner {
         upkeepRefunder = IUpkeepRefunder(_upkeepRefunder);
     }

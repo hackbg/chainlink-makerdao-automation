@@ -1,10 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+interface ERC20Like{
+    function transferFrom(
+        address from,
+        address to, 
+        uint256 amount
+    ) external;
+}
+
 contract DaiJoinMock {
-    event Join(address usr, uint256 wad);
+    ERC20Like paymentToken;
+
+    constructor(address _paymentToken){
+        paymentToken = ERC20Like(_paymentToken);
+    }
 
     function join(address usr, uint256 wad) external {
-        emit Join(usr, wad);
+        paymentToken.transferFrom(msg.sender, usr, wad);
     }
 }

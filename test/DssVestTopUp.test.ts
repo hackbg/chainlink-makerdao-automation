@@ -16,6 +16,7 @@ const { formatBytes32String, toUtf8Bytes, keccak256 } = ethers.utils;
 const fakeVow = "0xA950524441892A31ebddF91d3cEEFa04Bf454466";
 
 describe("DssVestTopUp", function () {
+  const vestedTokens = BigNumber.from(10000);
   const minWithdrawAmt = BigNumber.from(100);
   const maxDepositAmt = BigNumber.from(1000);
   const initialUpkeepBalance = BigNumber.from(150);
@@ -56,7 +57,7 @@ describe("DssVestTopUp", function () {
     linkToken = await ERC20.deploy("Chainlink", "LINK");
 
     const DaiJoinMock = await ethers.getContractFactory("DaiJoinMock");
-    daiJoinMock = await DaiJoinMock.deploy();
+    daiJoinMock = await DaiJoinMock.deploy(token.address);
 
     // setup chainlink keeper registry mock
     const KeeperRegistryMock = await ethers.getContractFactory(
@@ -107,7 +108,7 @@ describe("DssVestTopUp", function () {
     const now = block.timestamp;
     const createVestTx = await dssVest.create(
       topUp.address,
-      10000,
+      vestedTokens,
       now,
       1000,
       100,
@@ -156,30 +157,17 @@ describe("DssVestTopUp", function () {
       });
 
       it("should vest accrued tokens", async function () {
-        const unpaid = await dssVest.unpaid(vestId);
         await topUp.refundUpkeep();
         const vested = await token.balanceOf(topUp.address);
 
-        expect(unpaid).to.eq(vested);
+        expect(vested).to.eq(maxDepositAmt);
       });
 
       it("should return excess payment to surplus buffer", async function () {
         const unpaid = await dssVest.unpaid(vestId);
-        const topUpTx = await topUp.refundUpkeep();
-
-        // get join event data from mock
-        const topUpRc = await topUpTx.wait();
-        const joinEvent = topUpRc.events?.find(
-          (e) => e.address === daiJoinMock.address
-        );
-        const abiCoder = new ethers.utils.AbiCoder();
-        const [vowAddr, joinAmt] = abiCoder.decode(
-          ["address", "uint256"],
-          joinEvent?.data || ""
-        );
-
-        expect(vowAddr).to.eq(fakeVow);
-        expect(joinAmt).to.eq(unpaid.sub(maxDepositAmt));
+        await topUp.refundUpkeep();
+        const surplusBufferBalance = await token.balanceOf(fakeVow);
+        expect(surplusBufferBalance).to.equal(unpaid.sub(maxDepositAmt));
       });
 
       it("should fund upkeep", async function () {

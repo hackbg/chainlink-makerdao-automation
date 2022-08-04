@@ -137,6 +137,7 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
             if (amt > maxDepositAmt) {
                 // Return excess amount to surplus buffer
                 uint256 excessAmt = amt - maxDepositAmt;
+                TransferHelper.safeApprove(paymentToken, address(daiJoin), excessAmt);
                 daiJoin.join(vow, excessAmt);
                 amt = maxDepositAmt;
                 emit ExcessPaymentReturned(excessAmt);

@@ -157,10 +157,10 @@ describe("DssVestTopUp", function () {
       });
 
       it("should vest accrued tokens", async function () {
-        await topUp.refundUpkeep();
-        const vested = await token.balanceOf(topUp.address);
-
-        expect(vested).to.eq(maxDepositAmt);
+        const unpaid = await dssVest.unpaid(vestId);
+        await expect(topUp.refundUpkeep())
+          .to.emit(topUp, "VestedTokensWithdrawn")
+          .withArgs(unpaid);
       });
 
       it("should return excess payment to surplus buffer", async function () {

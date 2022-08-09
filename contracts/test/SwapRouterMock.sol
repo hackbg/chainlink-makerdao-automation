@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+interface ERC20Like{
+    function transferFrom(
+        address from,
+        address to, 
+        uint256 amount
+    ) external;
+}
+
 contract SwapRouterMock {
     struct ExactInputSingleParams {
         address tokenIn;
@@ -27,6 +35,7 @@ contract SwapRouterMock {
             params.amountIn,
             params.amountOutMinimum
         );
+        ERC20Like(params.tokenIn).transferFrom(msg.sender, address(this), params.amountIn);
         amountOut = params.amountIn;
     }
 }

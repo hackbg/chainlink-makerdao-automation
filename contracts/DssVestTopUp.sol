@@ -42,7 +42,6 @@ interface KeeperRegistryLike {
  * funds an upkeep after swapping the payment tokens for LINK
  */
 contract DssVestTopUp is IUpkeepRefunder, Ownable {
-    DssVestLike public immutable dssVest;
     DaiJoinLike public immutable daiJoin;
     ISwapRouter public immutable swapRouter;
     address public immutable vow;
@@ -50,6 +49,7 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
     address public immutable linkToken;
     address public immutable paymentUsdPriceFeed;
     address public immutable linkUsdPriceFeed;
+    DssVestLike public dssVest;
     KeeperRegistryLike public keeperRegistry;
     uint24 public uniswapPoolFee = 3000;
     uint24 public uniswapSlippageTolerancePercent = 2;
@@ -66,6 +66,7 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
     event ThresholdSet(uint256 newThreshold);
     event UniswapPoolFeeSet(uint24 poolFee);
     event UniswapSlippageToleranceSet(uint24 slippageTolerancePercent);
+    event DssVestSet(address dssVest);
     event KeeperRegistrySet(address keeperRegistry);
     event VestedTokensWithdrawn(uint256 amount);
     event ExcessPaymentReturned(uint256 amount);
@@ -87,7 +88,6 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
         uint256 _maxDepositAmt,
         uint256 _threshold
     ) {
-        require(_dssVest != address(0), "invalid dssVest address");
         require(_daiJoin != address(0), "invalid daiJoin address");
         require(_vow != address(0), "invalid vow address");
         require(_paymentToken != address(0), "invalid paymentToken address");
@@ -96,7 +96,6 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
         require(_paymentUsdPriceFeed != address(0), "invalid paymentUsdPriceFeed address");
         require(_linkUsdPriceFeed != address(0), "invalid linkUsdPriceFeed address");
 
-        dssVest = DssVestLike(_dssVest);
         daiJoin = DaiJoinLike(_daiJoin);
         vow = _vow;
         paymentToken = _paymentToken;
@@ -104,6 +103,7 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
         linkToken = _linkToken;
         paymentUsdPriceFeed = _paymentUsdPriceFeed;
         linkUsdPriceFeed = _linkUsdPriceFeed;
+        setDssVest(_dssVest);
         setKeeperRegistry(_keeperRegistry);
         setMinWithdrawAmt(_minWithdrawAmt);
         setMaxDepositAmt(_maxDepositAmt);
@@ -287,6 +287,12 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
         require(_threshold > 0, "invalid threshold");
         threshold = _threshold;
         emit ThresholdSet(_threshold);
+    }
+
+    function setDssVest(address _dssVest) public onlyOwner {
+        require(_dssVest != address(0), "invalid dssVest address");
+        dssVest = DssVestLike(_dssVest);
+        emit DssVestSet(_dssVest);
     }
 
     function setKeeperRegistry(address _keeperRegistry) public onlyOwner {

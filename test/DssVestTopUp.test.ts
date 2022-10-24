@@ -260,9 +260,24 @@ describe("DssVestTopUp", function () {
       expect(oldKeeperRegistry).to.not.eq(newKeeperRegistry);
     });
 
-    it("should not allow owner change keeper registry", async function () {
+    it("should not allow user to change keeper registry", async function () {
       await expect(
         topUp.connect(user).setKeeperRegistry(admin.address)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("should change dssVest", async function () {
+      const oldDssVest = await topUp.dssVest();
+
+      await topUp.setDssVest(admin.address);
+      const newDssVest = await topUp.dssVest();
+
+      expect(oldDssVest).to.not.eq(newDssVest);
+    });
+
+    it("should not allow user to change dssVest", async function () {
+      await expect(
+        topUp.connect(user).setDssVest(admin.address)
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });

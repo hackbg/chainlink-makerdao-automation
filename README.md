@@ -87,7 +87,7 @@ Copy the `.env.example` to `.env` file and make sure you've set all of the follo
 | `STAGING_PAYMENT_USD_PRICE_FEED` | Chainlink price feed for the DAI / USD pair on testnet                                                                                                                                    |
 | `STAGING_LINK_USD_PRICE_FEED`    | Chainlink price feed for the LINK / USD pair on testnet                                                                                                                                   |
 
-Note: All example values are the actual values for Ethereum Mainnet and the staging ones for Kovan testnet.
+Note: All example values are the actual values for Ethereum Mainnet and the staging ones for Goerli testnet.
 
 ## Test
 

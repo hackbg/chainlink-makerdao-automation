@@ -41,7 +41,7 @@ const UpkeepParams = {
   GAS_LIMIT: 500000,
   INITIAL_FUNDING: ethers.utils.parseEther("8"),
   CHECK_DATA: "0x",
-  SOURCE_ID: 4,
+  OFFCHAIN_CONFIG: "0x",
 };
 
 const FAKE_VOW_ADDRESS = "0xA950524441892A31ebddF91d3cEEFa04Bf454466";
@@ -165,9 +165,9 @@ async function main() {
     UpkeepParams.ADMIN_EMAIL,
     UpkeepParams.NAME,
     UpkeepParams.GAS_LIMIT,
+    UpkeepParams.OFFCHAIN_CONFIG,
     UpkeepParams.INITIAL_FUNDING,
-    UpkeepParams.CHECK_DATA,
-    UpkeepParams.SOURCE_ID
+    UpkeepParams.CHECK_DATA
   );
   console.log("Upkeep registered for DssCronKeeper with ID", upkeepId);
   await topUp.setUpkeepId(upkeepId);

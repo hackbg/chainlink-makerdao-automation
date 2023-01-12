@@ -6,7 +6,7 @@ import {
   DssVestTopUpMock,
   SampleJob,
   Sequencer,
-} from "../typechain";
+} from "../../typechain";
 
 const { HashZero } = ethers.constants;
 const { formatBytes32String } = ethers.utils;

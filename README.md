@@ -94,7 +94,13 @@ Note: All example values are the actual values for Ethereum Mainnet and the stag
 Run unit tests on the local Hardhat network:
 
 ```bash
-npm run test
+npm test
+```
+
+For end-to-end testing:
+
+```bash
+npm run test:e2e
 ```
 
 To test on a live keeper network, deploy a staging environment on a testnet:

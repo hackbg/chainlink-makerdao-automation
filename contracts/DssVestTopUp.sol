@@ -19,18 +19,23 @@ interface DaiJoinLike {
 }
 
 interface KeeperRegistryLike {
-    function getUpkeep(uint256 id)
+    struct UpkeepInfo {
+        address target;
+        uint32 executeGas;
+        bytes checkData;
+        uint96 balance;
+        address admin;
+        uint64 maxValidBlocknumber;
+        uint32 lastPerformBlockNumber;
+        uint96 amountSpent;
+        bool paused;
+        bytes offchainConfig;
+    }
+
+    function getUpkeep(uint256)
         external
         view
-        returns (
-            address target,
-            uint32 executeGas,
-            bytes memory checkData,
-            uint96 balance,
-            address lastKeeper,
-            address admin,
-            uint64 maxValidBlocknumber
-        );
+        returns (UpkeepInfo memory upkeepInfo);
 
     function addFunds(uint256 id, uint96 amount) external;
 }
@@ -154,7 +159,7 @@ contract DssVestTopUp is IUpkeepRefunder, Ownable {
      * if there's enough unpaid vested tokens or tokens in the contract balance
      */
     function shouldRefundUpkeep() public view initialized returns (bool) {
-        (, , , uint96 balance, , , ) = keeperRegistry.getUpkeep(upkeepId);
+        uint96 balance = keeperRegistry.getUpkeep(upkeepId).balance;
         if (
             threshold < balance ||
             (dssVest.unpaid(vestId) < minWithdrawAmt &&

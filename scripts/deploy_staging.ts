@@ -113,7 +113,7 @@ async function main() {
     dssVest.address
   );
   const DaiJoinMock = await ethers.getContractFactory("DaiJoinMock");
-  const daiJoinMock = await DaiJoinMock.deploy();
+  const daiJoinMock = await DaiJoinMock.deploy(paymentToken.address);
   await daiJoinMock.deployed();
 
   const DssVestTopUp = await ethers.getContractFactory("DssVestTopUp");

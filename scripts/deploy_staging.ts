@@ -3,9 +3,14 @@
 //
 // When running the script with `npx hardhat run <script>` you'll find the Hardhat
 // Runtime Environment's members available in the global scope.
+import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
+import { abi as NonfungiblePositionManagerABI } from "@uniswap/v3-periphery/artifacts/contracts/NonfungiblePositionManager.sol/NonfungiblePositionManager.json";
 import { ProcessEnv } from "../types";
 import { registerUpkeep } from "./utils/keepers";
+import { addLiquidity, findOrCreatePool } from "./utils/pool";
+import { encodePriceSqrt } from "./utils/uniswap";
+import { LinkTokenMock } from "../typechain";
 
 const { parseEther, keccak256, formatBytes32String, toUtf8Bytes } =
   ethers.utils;
@@ -17,6 +22,8 @@ const {
   STAGING_LINK_TOKEN,
   STAGING_PAYMENT_USD_PRICE_FEED,
   STAGING_LINK_USD_PRICE_FEED,
+  STAGING_UNISWAP_V3_FACTORY,
+  NONFUNGIBLE_POSITION_MANAGER,
 } = process.env as ProcessEnv;
 
 const SEQUENCER_WINDOW_IN_BLOCKS = 13;
@@ -44,6 +51,13 @@ const UpkeepParams = {
   OFFCHAIN_CONFIG: "0x",
 };
 
+const LiquidityParams = {
+  LINK_TOKEN_AMOUNT: ethers.utils.parseEther("5"),
+  PAYMENT_TOKEN_AMOUNT: ethers.utils.parseEther("5"),
+  MINIMUM_LINK_AMOUNT: BigNumber.from(0),
+  MINIMUM_PAYMENT_AMOUNT: BigNumber.from(0),
+};
+
 const FAKE_VOW_ADDRESS = "0xA950524441892A31ebddF91d3cEEFa04Bf454466";
 
 async function main() {
@@ -60,12 +74,18 @@ async function main() {
     !STAGING_SWAP_ROUTER ||
     !STAGING_LINK_TOKEN ||
     !STAGING_PAYMENT_USD_PRICE_FEED ||
-    !STAGING_LINK_USD_PRICE_FEED
+    !STAGING_LINK_USD_PRICE_FEED ||
+    !STAGING_UNISWAP_V3_FACTORY ||
+    !NONFUNGIBLE_POSITION_MANAGER
   ) {
     throw new Error("Missing required env variables!");
   }
 
   const [admin] = await ethers.getSigners();
+
+  // setup link token
+  const LinkToken = await ethers.getContractFactory("LinkTokenMock");
+  const linkToken: LinkTokenMock = LinkToken.attach(STAGING_LINK_TOKEN);
 
   // setup dss-cron
   const Sequencer = await ethers.getContractFactory("Sequencer");
@@ -173,7 +193,35 @@ async function main() {
   await topUp.setUpkeepId(upkeepId);
   console.log("Upkeep ID set to DssVestTopUp contract");
 
-  console.log("TODO: Create a Uniswap pool for Test token and LINK");
+  const ratio = encodePriceSqrt(BigNumber.from(1), BigNumber.from(1));
+
+  const pool = await findOrCreatePool(
+    linkToken.address,
+    paymentToken.address,
+    ratio,
+    admin
+  );
+
+  console.log("Pool deployed at address: ", pool.address);
+
+  const nonFungiblePositionManager = new ethers.Contract(
+    NONFUNGIBLE_POSITION_MANAGER,
+    NonfungiblePositionManagerABI,
+    admin
+  );
+
+  await addLiquidity(
+    linkToken,
+    paymentToken,
+    nonFungiblePositionManager,
+    admin,
+    LiquidityParams.LINK_TOKEN_AMOUNT,
+    LiquidityParams.PAYMENT_TOKEN_AMOUNT,
+    LiquidityParams.MINIMUM_LINK_AMOUNT,
+    LiquidityParams.MINIMUM_PAYMENT_AMOUNT
+  );
+
+  console.log("Liquidity added.");
 }
 
 // We recommend this pattern to be able to use async/await everywhere

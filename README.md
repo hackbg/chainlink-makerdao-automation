@@ -86,6 +86,8 @@ Copy the `.env.example` to `.env` file and make sure you've set all of the follo
 | `STAGING_LINK_TOKEN`             | Address of ERC-20 token like LINK on testnet                                                                                                                                              |
 | `STAGING_PAYMENT_USD_PRICE_FEED` | Chainlink price feed for the DAI / USD pair on testnet                                                                                                                                    |
 | `STAGING_LINK_USD_PRICE_FEED`    | Chainlink price feed for the LINK / USD pair on testnet                                                                                                                                   |
+| `STAGING_UNISWAP_V3_FACTORY`     | Uniswap V3 Factory address                                                                                                                                   |
+| `NONFUNGIBLE_POSITION_MANAGER`    | NonFungible Position Manager
 
 Note: All example values are the actual values for Ethereum Mainnet and the staging ones for Goerli testnet.
 

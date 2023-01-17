@@ -9,6 +9,9 @@ import "solidity-coverage";
 
 dotenv.config();
 
+const GOERLI_RPC_URL: string = process.env.GOERLI_URL || "";
+const BLOCK_NUMBER: number = parseInt(process.env.BLOCK_NUMBER!);
+
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
 task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
@@ -35,6 +38,15 @@ const config: HardhatUserConfig = {
         },
       },
       {
+        version: "0.8.6",
+        settings: {
+          optimizer: {
+            runs: 200,
+            enabled: true,
+          },
+        },
+      },
+      {
         version: "0.7.6",
       },
       {
@@ -47,7 +59,7 @@ const config: HardhatUserConfig = {
   },
   networks: {
     goerli: {
-      url: process.env.GOERLI_URL || "",
+      url: GOERLI_RPC_URL,
       accounts:
         process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
@@ -65,5 +77,14 @@ const config: HardhatUserConfig = {
     apiKey: process.env.ETHERSCAN_API_KEY,
   },
 };
+
+if (process.env.FORK_ENABLED === "true") {
+  config.networks!.hardhat = {
+    forking: {
+      url: GOERLI_RPC_URL,
+      blockNumber: BLOCK_NUMBER,
+    },
+  };
+}
 
 export default config;

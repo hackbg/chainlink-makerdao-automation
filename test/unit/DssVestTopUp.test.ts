@@ -9,7 +9,7 @@ import {
   ERC20PresetMinterPauser,
   KeeperRegistryMock,
   SwapRouterMock,
-} from "../typechain";
+} from "../../typechain";
 
 const { formatBytes32String, toUtf8Bytes, keccak256 } = ethers.utils;
 

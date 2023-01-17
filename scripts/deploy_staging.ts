@@ -87,6 +87,15 @@ async function main() {
   const LinkToken = await ethers.getContractFactory("LinkTokenMock");
   const linkToken: LinkTokenMock = LinkToken.attach(STAGING_LINK_TOKEN);
 
+  const adminLinkBalance = await linkToken.balanceOf(admin.address);
+  const LINK_TOKEN_NEEDED = UpkeepParams.INITIAL_FUNDING.add(
+    LiquidityParams.LINK_TOKEN_AMOUNT
+  );
+
+  if (adminLinkBalance < LINK_TOKEN_NEEDED) {
+    throw new Error("Admin doesn't have enough LINK!");
+  }
+
   // setup dss-cron
   const Sequencer = await ethers.getContractFactory("Sequencer");
   const sequencer = await Sequencer.deploy();

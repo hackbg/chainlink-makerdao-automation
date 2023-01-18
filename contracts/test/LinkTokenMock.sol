@@ -26,4 +26,10 @@ contract LinkTokenMock is ERC20, IERC677 {
         uint256 value,
         bytes memory data
     ) external returns (bool success) {}
+
+    function approve(address _spender, uint256 _value)
+        public
+        override(ERC20, IERC20)
+        returns (bool)
+    {}
 }

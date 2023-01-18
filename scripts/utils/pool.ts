@@ -1,15 +1,15 @@
 import { BigNumber, Contract, Event } from "ethers";
+import { ethers } from "hardhat";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { abi as UniswapV3FactoryABI } from "@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json";
 import { abi as IUniswapV3PoolABI } from "@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { ethers } from "hardhat";
-import { ProcessEnv } from "../../types";
 import { IUniswapV3Pool } from "../../typechain/IUniswapV3Pool";
 import { FeeAmount, getMaxTick, getMinTick, TICK_SPACINGS } from "./ticks";
+import { ProcessEnv } from "../../types";
 
 const { STAGING_UNISWAP_V3_FACTORY } = process.env as ProcessEnv;
 
-export async function createPool(
+export async function findOrCreatePool(
   token0: string,
   token1: string,
   ratio: BigNumber,
@@ -20,25 +20,23 @@ export async function createPool(
     UniswapV3FactoryABI,
     provider
   );
-  const createUniswapFactoryTx = await uniswapFactoryContract.createPool(
+  let pool: IUniswapV3Pool;
+  const poolAddress = await uniswapFactoryContract.getPool(
     token0,
     token1,
     FeeAmount.MEDIUM
   );
-  const createUniswapFactoryRc = await createUniswapFactoryTx.wait();
-  const createUniswapFactoryEvent = createUniswapFactoryRc.events?.find(
-    (e: Event) => e.event === "PoolCreated"
-  );
 
-  const { pool: poolAddress } = createUniswapFactoryEvent?.args || [];
-
-  const pool: IUniswapV3Pool = new ethers.Contract(
-    poolAddress,
-    IUniswapV3PoolABI,
-    provider
-  ) as IUniswapV3Pool;
-
-  await pool.initialize(ratio);
+  const doesPoolExist = poolAddress !== ethers.constants.AddressZero;
+  if (doesPoolExist) {
+    pool = new ethers.Contract(
+      poolAddress,
+      IUniswapV3PoolABI,
+      provider
+    ) as IUniswapV3Pool;
+  } else {
+    pool = await createPool(token0, token1, ratio, provider);
+  }
   return pool;
 }
 
@@ -76,4 +74,37 @@ export async function addLiquidity(
     recipient: owner.address,
     deadline: BigNumber.from(timestampBefore).add(60 * 10),
   });
+}
+
+export async function createPool(
+  token0: string,
+  token1: string,
+  ratio: BigNumber,
+  provider: SignerWithAddress
+) {
+  const uniswapFactoryContract = new ethers.Contract(
+    STAGING_UNISWAP_V3_FACTORY!,
+    UniswapV3FactoryABI,
+    provider
+  );
+
+  const createUniswapFactoryTx = await uniswapFactoryContract.createPool(
+    token0,
+    token1,
+    FeeAmount.MEDIUM
+  );
+  const createUniswapFactoryRc = await createUniswapFactoryTx.wait();
+  const createUniswapFactoryEvent = createUniswapFactoryRc.events?.find(
+    (e: Event) => e.event === "PoolCreated"
+  );
+
+  const { pool: poolAddress } = createUniswapFactoryEvent?.args || [];
+  const pool = new ethers.Contract(
+    poolAddress,
+    IUniswapV3PoolABI,
+    provider
+  ) as unknown as IUniswapV3Pool;
+
+  await pool.initialize(ratio);
+  return pool;
 }

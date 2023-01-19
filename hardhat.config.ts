@@ -76,6 +76,9 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,
   },
+  mocha: {
+    timeout: 10 * 60 * 1000, // wait for 10 minutes
+  },
 };
 
 if (process.env.FORK_ENABLED === "true") {

@@ -4,11 +4,10 @@
 // When running the script with `npx hardhat run <script>` you'll find the Hardhat
 // Runtime Environment's members available in the global scope.
 import { ethers } from "hardhat";
-import { ProcessEnv } from "../types";
 
 const { formatBytes32String } = ethers.utils;
 
-const { SEQUENCER, NETWORK_NAME } = process.env as ProcessEnv;
+const { SEQUENCER, NETWORK_NAME } = process.env;
 
 async function main() {
   // Hardhat always runs the compile task when running scripts with its command

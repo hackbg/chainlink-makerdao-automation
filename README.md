@@ -80,8 +80,6 @@ Copy the `.env.example` to `.env` file and make sure you've set all of the follo
 
 | Name                             | Description                                                                                                                                                                               |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `STAGING_KEEPER_REGISTRY`        | Address of KeeperRegistry on testnet for staging environment                                                                                                                              |
-| `STAGING_KEEPER_REGISTRAR`       | Address of KeeperRegistrar on testnet used for automatically registering Upkeeps for staging environment. The deployer account needs to have enough LINK balance for the initial funding. |
 | `STAGING_SWAP_ROUTER`            | Address of Uniswap V3 Router on testnet                                                                                                                                                   |
 | `STAGING_LINK_TOKEN`             | Address of ERC-20 token like LINK on testnet                                                                                                                                              |
 | `STAGING_PAYMENT_USD_PRICE_FEED` | Chainlink price feed for the DAI / USD pair on testnet                                                                                                                                    |
@@ -103,12 +101,6 @@ For end-to-end testing:
 
 ```bash
 npm run test:e2e
-```
-
-To test on a live keeper network, deploy a staging environment on a testnet:
-
-```bash
-npx hardhat run scripts/deploy_staging.ts --network <network>
 ```
 
 ## Deploy

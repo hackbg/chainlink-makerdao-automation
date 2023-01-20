@@ -17,14 +17,14 @@ import {
 import { KeeperRegistry20 } from "../../typechain/KeeperRegistry20";
 import { KeeperRegistrar20 } from "../../typechain/KeeperRegistrar20";
 import { ProcessEnv } from "../../types";
-import { registerUpkeep } from "../../scripts/utils/keepers";
+import { registerUpkeep } from "../utils/keepers";
 import {
   configRegistry,
   getRegistrySigners,
   keeperRegistryPerformUpkeep,
-} from "../../scripts/utils/keeper-registry";
-import { encodePriceSqrt } from "../../scripts/utils/uniswap";
-import { addLiquidity, createPool } from "../../scripts/utils/pool";
+} from "../utils/keeper-registry";
+import { encodePriceSqrt } from "../utils/uniswap";
+import { addLiquidity, createPool } from "../utils/pool";
 import { IUniswapV3Pool } from "../../typechain/IUniswapV3Pool";
 
 const { formatBytes32String } = ethers.utils;

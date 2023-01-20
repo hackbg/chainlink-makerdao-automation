@@ -4,24 +4,18 @@
 // When running the script with `npx hardhat run <script>` you'll find the Hardhat
 // Runtime Environment's members available in the global scope.
 import { ethers } from "hardhat";
-import { ProcessEnv } from "../types";
-
-const { parseEther } = ethers.utils;
 
 const {
-  DSS_VEST,
-  DAI_JOIN,
-  VOW,
-  PAYMENT_TOKEN,
-  KEEPER_REGISTRY,
-  SWAP_ROUTER,
+  UPKEEP_ID,
+  KEEPER_REGISTRY_V2,
+  DAI_TOKEN,
   LINK_TOKEN,
-  PAYMENT_USD_PRICE_FEED,
+  DAI_USD_PRICE_FEED,
   LINK_USD_PRICE_FEED,
-  MIN_WITHDRAW_AMOUNT,
-  MAX_DEPOSIT_AMOUNT,
-  BALANCE_THRESHOLD,
-} = process.env as ProcessEnv;
+  SWAP_ROUTER_V3,
+  UNISWAP_POOL_FEE,
+  SLIPPAGE_TOLERANCE_PERCENT,
+} = process.env;
 
 async function main() {
   // Hardhat always runs the compile task when running scripts with its command
@@ -32,36 +26,30 @@ async function main() {
   // await hre.run('compile');
 
   if (
-    !DSS_VEST ||
-    !DAI_JOIN ||
-    !VOW ||
-    !PAYMENT_TOKEN ||
-    !KEEPER_REGISTRY ||
-    !SWAP_ROUTER ||
+    !UPKEEP_ID ||
+    !KEEPER_REGISTRY_V2 ||
+    !DAI_TOKEN ||
     !LINK_TOKEN ||
-    !PAYMENT_USD_PRICE_FEED ||
+    !DAI_USD_PRICE_FEED ||
     !LINK_USD_PRICE_FEED ||
-    !MIN_WITHDRAW_AMOUNT ||
-    !MAX_DEPOSIT_AMOUNT ||
-    !BALANCE_THRESHOLD
+    !SWAP_ROUTER_V3 ||
+    !UNISWAP_POOL_FEE ||
+    !SLIPPAGE_TOLERANCE_PERCENT
   ) {
-    throw new Error("Missing required env variables!");
+    throw new Error("Missing required env variable(s)!");
   }
 
   const DssVestTopUp = await ethers.getContractFactory("DssVestTopUp");
   const topUp = await DssVestTopUp.deploy(
-    DSS_VEST,
-    DAI_JOIN,
-    VOW,
-    PAYMENT_TOKEN,
-    KEEPER_REGISTRY,
-    SWAP_ROUTER,
+    UPKEEP_ID,
+    KEEPER_REGISTRY_V2,
+    DAI_TOKEN,
     LINK_TOKEN,
-    PAYMENT_USD_PRICE_FEED,
+    DAI_USD_PRICE_FEED,
     LINK_USD_PRICE_FEED,
-    parseEther(MIN_WITHDRAW_AMOUNT),
-    parseEther(MAX_DEPOSIT_AMOUNT),
-    parseEther(BALANCE_THRESHOLD)
+    SWAP_ROUTER_V3,
+    UNISWAP_POOL_FEE,
+    SLIPPAGE_TOLERANCE_PERCENT
   );
   await topUp.deployed();
   console.log("DssVestTopUp deployed to:", topUp.address);

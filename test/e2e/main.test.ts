@@ -9,6 +9,7 @@ import {
   KeeperRegistryParams,
   setupChainlinkAutomation,
 } from "../utils/chainlink-automation";
+import { parseEventFromABI } from "../utils/events";
 import { setupPool } from "../utils/uniswap";
 import {
   createVest,
@@ -182,15 +183,17 @@ describe("E2E", function () {
   before(async function () {
     [owner] = await ethers.getSigners();
     linkToken = await ethers.getContractAt("LinkTokenMock", STAGING_LINK_TOKEN);
-    daiToken = await setupDaiToken(
-      owner,
-      DaiTokenParams.DEFAULT_ACCOUNT_BALANCE
-    );
     registrySigners = getRegistrySigners();
   });
 
   beforeEach(async function () {
     const sequencer = await setupSequencer(SequencerParams.WINDOW);
+
+    daiToken = await setupDaiToken(
+      owner,
+      DaiTokenParams.DEFAULT_ACCOUNT_BALANCE
+    );
+
     job = await setupSampleJob(sequencer, SampleJobParams.MAX_DURATION);
     dssVest = await setupDssVest(daiToken, DssVestParams.CAP);
     const daiJoinMock = await deployDaiJoinMock(daiToken.address);
@@ -342,6 +345,39 @@ describe("E2E", function () {
       expect(preFundBalance.add(linkReceived).sub(performUpkeepPayment)).eq(
         postFundBalance
       );
+    });
+
+    it("should have converted all vested tokens and send them to upkeep", async function () {
+      await paymentAdapter.file(
+        formatBytes32String("bufferMax"),
+        parseEther("100")
+      );
+
+      const tx = await keeperRegistryPerformUpkeep(
+        registry,
+        registrySigners,
+        upkeepId,
+        KeeperRegistryParams.F
+      );
+
+      const topUpEventABI = [
+        "event TopUp(uint256 bufferSize, uint256 daiBalance, uint256 daiSent)",
+      ];
+      const { daiSent } = parseEventFromABI(tx, topUpEventABI);
+
+      const swappedDAIEventABI = [
+        "event SwappedDaiForLink(uint256 amountIn, uint256 amountOut)",
+      ];
+      const { amountIn: daiReceived, amountOut: linkSent } = parseEventFromABI(
+        tx,
+        swappedDAIEventABI
+      );
+
+      const upkeepRefundedABI = ["event UpkeepRefunded(uint256 amount)"];
+      const { amount: linkReceived } = parseEventFromABI(tx, upkeepRefundedABI);
+
+      expect(linkSent).to.eq(linkReceived);
+      expect(daiSent).to.eq(daiReceived);
     });
   });
 });

@@ -1,33 +1,42 @@
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
-import { BigNumber, ContractReceipt, Event, Wallet } from "ethers";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { keccak256, parseBytes32String, toUtf8Bytes } from "ethers/lib/utils";
-import { abi as NonfungiblePositionManagerABI } from "@uniswap/v3-periphery/artifacts/contracts/NonfungiblePositionManager.sol/NonfungiblePositionManager.json";
+import { BigNumberish, ContractReceipt, Event, Wallet } from "ethers";
+
 import {
-  DaiJoinMock,
-  DssCronKeeper,
+  registerUpkeep,
+  getRegistrySigners,
+  keeperRegistryPerformUpkeep,
+  KeeperRegistryParams,
+  setupChainlinkAutomation,
+} from "../utils/chainlink-automation";
+import { setupPool } from "../utils/uniswap";
+import {
+  createVest,
+  setupDaiToken,
+  setupDssVest,
+  setupPaymentAdapter,
+  setupSampleJob,
+  setupSequencer,
+  deployDaiJoinMock,
+} from "../utils/maker";
+
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import {
   DssVestMintable,
   ERC20PresetMinterPauser,
   LinkTokenMock,
   Sequencer,
   DssVestTopUp,
   SampleJob,
+  KeeperRegistry20,
+  KeeperRegistrar20,
+  IUniswapV3Pool,
+  NetworkPaymentAdapter,
 } from "../../typechain";
-import { KeeperRegistry20 } from "../../typechain/KeeperRegistry20";
-import { KeeperRegistrar20 } from "../../typechain/KeeperRegistrar20";
-import { ProcessEnv } from "../../types";
-import { registerUpkeep } from "../utils/keepers";
-import {
-  configRegistry,
-  getRegistrySigners,
-  keeperRegistryPerformUpkeep,
-} from "../utils/keeper-registry";
-import { encodePriceSqrt } from "../utils/uniswap";
-import { addLiquidity, createPool } from "../utils/pool";
-import { IUniswapV3Pool } from "../../typechain/IUniswapV3Pool";
 
-const { formatBytes32String } = ethers.utils;
+const { parseEther, parseBytes32String, formatBytes32String, Interface } =
+  ethers.utils;
+
 const {
   KEEPER_REGISTRY_LOGIC,
   NONFUNGIBLE_POSITION_MANAGER,
@@ -35,61 +44,127 @@ const {
   STAGING_LINK_USD_PRICE_FEED,
   STAGING_PAYMENT_USD_PRICE_FEED,
   STAGING_SWAP_ROUTER,
+  STAGING_UNISWAP_V3_FACTORY,
   VOW,
-} = process.env as ProcessEnv;
+} = process.env;
 
-const TopUpParams = {
-  MIN_WITHDRAW_AMT_PAYMENT_TOKEN: ethers.utils.parseEther("1"),
-  MAX_DEPOSIT_AMT_PAYMENT_TOKEN: ethers.utils.parseEther("3"),
-  THRESHOLD_LINK: ethers.utils.parseEther("7"),
+const DssCronKeeperParams = {
+  NETWORK_NAME: formatBytes32String("test"),
 };
 
-const VestParams = {
-  TOTAL_AMOUNT_VESTING_PLAN: ethers.utils.parseEther("100"),
-  DURATION_IN_SEC_VESTING_PLAN: 1,
+const SequencerParams = {
+  WINDOW: 1,
+};
+
+const SampleJobParams = {
+  MAX_DURATION: 100,
+};
+
+const DssVestTopUpParams = {
+  UNISWAP_POOL_FEE: 3000,
+  SLIPPAGE_TOLERANCE: 2,
+};
+
+const PaymentAdapterParams = {
+  MIN_PAYMENT: parseEther("1"),
+  BUFFER_MAX: parseEther("1"),
+};
+
+const PoolParams = {
+  LINK_TOKEN_LIQUIDITY: parseEther("100"),
+  DAI_TOKEN_LIQUIDITY: parseEther("100"),
+};
+
+const DaiTokenParams = {
+  DEFAULT_ACCOUNT_BALANCE: parseEther("100"),
+};
+
+const DssVestParams = {
+  CAP: parseEther("100"),
+};
+
+const VestPlanParams = {
+  ID: 1,
+  TOTAL_AMOUNT: parseEther("100"),
+  DURATION_IN_SEC: 1,
   CLIFF_PERIOD_IN_SEC: 0,
-  CAP: ethers.utils.parseEther("100"),
-};
-
-const KeeperRegistrarParams = {
-  AUTO_APPROVE_CONFIG_TYPE: {
-    NONE: 0,
-    WHITELIST: 1,
-    ALLOW_ALL: 2,
-  },
-  AUTO_APPROVE_MAX_ALLOWED: BigNumber.from(20),
-  MIN_UPKEEP_SPEND: BigNumber.from("1000"),
-};
-
-const KeeperRegistryParams = {
-  KEEPER_REGISTRY_LOGIC: "0x96d2971f181bf01f7b61f254e0ded20bb1657e7b",
-  F: 1,
 };
 
 const UpkeepParams = {
   NAME: "test123",
   ADMIN_EMAIL: "test@example.com",
   GAS_LIMIT: 500000,
-  INITIAL_FUNDING: ethers.utils.parseEther("8.0"),
+  INITIAL_FUNDING: parseEther("1"),
   CHECK_DATA: "0x",
   OFFCHAIN_CONFIG: "0x",
 };
 
+async function setupDssCronKeeper(sequencer: Sequencer, networkName: string) {
+  const DssCronKeeper = await ethers.getContractFactory("DssCronKeeper");
+  const cronKeeper = await DssCronKeeper.deploy(sequencer.address, networkName);
+  await sequencer.addNetwork(networkName);
+  return cronKeeper;
+}
+
+async function deployDssVestTopup(
+  upkeepId: BigNumberish,
+  registryAddress: string,
+  daiTokenAddress: string,
+  linkTokenAddress: string,
+  paymentUsdPriceFeedAddress: string,
+  linkUsdPriceFeedAddress: string,
+  swapRouterAddress: string,
+  uniswapPoolFee: BigNumberish,
+  slippageTolerance: BigNumberish
+) {
+  const DssVestTopUp = await ethers.getContractFactory("DssVestTopUp");
+  const topUp = await DssVestTopUp.deploy(
+    upkeepId,
+    registryAddress,
+    daiTokenAddress,
+    linkTokenAddress,
+    paymentUsdPriceFeedAddress,
+    linkUsdPriceFeedAddress,
+    swapRouterAddress,
+    uniswapPoolFee,
+    slippageTolerance
+  );
+  await topUp.deployed();
+  return topUp;
+}
+
+function getUpkeepPerformTotalSpent(tx: ContractReceipt) {
+  return tx.events?.find((e) => e.event === "UpkeepPerformed")?.args
+    ?.totalPayment;
+}
+
+function getLinkSwapped(tx: ContractReceipt) {
+  const swappedPaymentEventHash =
+    "0x577da16e6f562ccc727dadd3c8a9fc35185178abf4e92c79b84634d64aba6d7c";
+  const swappedPaymentEvent = tx.events?.find(
+    (e: Event) => e.topics[0] === swappedPaymentEventHash
+  );
+  const ABI = ["event SwappedDaiForLink(uint256 amountIn, uint256 amountOut)"];
+  const iface = new Interface(ABI);
+  const { amountOut } = iface.decodeEventLog(
+    "SwappedDaiForLink",
+    swappedPaymentEvent?.data!
+  );
+  return amountOut;
+}
+
 describe("E2E", function () {
-  let cronKeeper: DssCronKeeper;
-  let sequencer: Sequencer;
   let registry: KeeperRegistry20;
   let registrar: KeeperRegistrar20;
   let linkToken: LinkTokenMock;
   let upkeepId: string;
-  let vestId: BigNumber;
   let owner: SignerWithAddress;
   let registrySigners: Wallet[];
   let dssVest: DssVestMintable;
   let topUp: DssVestTopUp;
-  let paymentToken: ERC20PresetMinterPauser;
+  let paymentAdapter: NetworkPaymentAdapter;
+  let daiToken: ERC20PresetMinterPauser;
   let job: SampleJob;
-  let daiJoinMock: DaiJoinMock;
 
   if (
     !STAGING_LINK_TOKEN ||
@@ -98,6 +173,7 @@ describe("E2E", function () {
     !STAGING_SWAP_ROUTER ||
     !VOW ||
     !KEEPER_REGISTRY_LOGIC ||
+    !STAGING_UNISWAP_V3_FACTORY ||
     !NONFUNGIBLE_POSITION_MANAGER
   ) {
     throw new Error("Missing required env variables!");
@@ -105,23 +181,29 @@ describe("E2E", function () {
 
   before(async function () {
     [owner] = await ethers.getSigners();
-
     linkToken = await ethers.getContractAt("LinkTokenMock", STAGING_LINK_TOKEN);
-
-    paymentToken = await setupPaymentToken(owner);
+    daiToken = await setupDaiToken(
+      owner,
+      DaiTokenParams.DEFAULT_ACCOUNT_BALANCE
+    );
     registrySigners = getRegistrySigners();
   });
 
   beforeEach(async function () {
-    sequencer = await setupSequencer();
+    const sequencer = await setupSequencer(SequencerParams.WINDOW);
+    job = await setupSampleJob(sequencer, SampleJobParams.MAX_DURATION);
+    dssVest = await setupDssVest(daiToken, DssVestParams.CAP);
+    const daiJoinMock = await deployDaiJoinMock(daiToken.address);
 
-    job = await setupSampleJob(sequencer);
-
-    cronKeeper = await setupDssCronKeeper(sequencer);
+    const cronKeeper = await setupDssCronKeeper(
+      sequencer,
+      DssCronKeeperParams.NETWORK_NAME
+    );
 
     ({ registry, registrar } = await setupChainlinkAutomation(
       owner,
-      linkToken
+      linkToken,
+      KEEPER_REGISTRY_LOGIC
     ));
     upkeepId = await registerUpkeep(
       cronKeeper.address,
@@ -136,40 +218,42 @@ describe("E2E", function () {
       UpkeepParams.CHECK_DATA
     );
 
-    dssVest = await setupDssVest(paymentToken);
-
-    daiJoinMock = await setupDaiJoin(paymentToken);
-
-    topUp = await setupDssVestTopup(
-      dssVest,
-      daiJoinMock,
-      paymentToken,
-      registry,
-      linkToken,
+    topUp = await deployDssVestTopup(
       upkeepId,
-      cronKeeper,
-      VOW,
-      STAGING_SWAP_ROUTER,
+      registry.address,
+      daiToken.address,
+      linkToken.address,
       STAGING_PAYMENT_USD_PRICE_FEED,
-      STAGING_LINK_USD_PRICE_FEED
+      STAGING_LINK_USD_PRICE_FEED,
+      STAGING_SWAP_ROUTER,
+      DssVestTopUpParams.UNISWAP_POOL_FEE,
+      DssVestTopUpParams.SLIPPAGE_TOLERANCE
     );
 
-    vestId = await setupVest(dssVest, topUp, owner, vestId);
+    paymentAdapter = await setupPaymentAdapter(
+      dssVest.address,
+      VestPlanParams.ID,
+      topUp.address,
+      daiJoinMock.address,
+      VOW,
+      PaymentAdapterParams.BUFFER_MAX,
+      PaymentAdapterParams.MIN_PAYMENT
+    );
+    await topUp.setPaymentAdapter(paymentAdapter.address);
+
+    await createVest(
+      dssVest,
+      paymentAdapter.address,
+      VestPlanParams.TOTAL_AMOUNT,
+      VestPlanParams.DURATION_IN_SEC,
+      VestPlanParams.CLIFF_PERIOD_IN_SEC,
+      owner
+    );
+
+    await cronKeeper.setUpkeepRefunder(topUp.address);
   });
 
   describe("Execute jobs", function () {
-    it("should reduce upkeep balance after job execution", async function () {
-      const { balance: preBalance } = await registry.getUpkeep(upkeepId);
-      await keeperRegistryPerformUpkeep(
-        registry,
-        registrySigners,
-        upkeepId,
-        KeeperRegistryParams.F
-      );
-      const { balance: postBalance } = await registry.getUpkeep(upkeepId);
-      expect(preBalance).to.be.gt(postBalance);
-    });
-
     it("should have executed job successfully", async function () {
       await keeperRegistryPerformUpkeep(
         registry,
@@ -185,28 +269,36 @@ describe("E2E", function () {
       expect(reason).to.equal("Timer hasn't elapsed");
       expect(workable).to.equal(false);
     });
+
+    it("should reduce upkeep balance after job execution", async function () {
+      const { balance: preBalance } = await registry.getUpkeep(upkeepId);
+      await keeperRegistryPerformUpkeep(
+        registry,
+        registrySigners,
+        upkeepId,
+        KeeperRegistryParams.F
+      );
+      const { balance: postBalance } = await registry.getUpkeep(upkeepId);
+      expect(preBalance).to.be.gt(postBalance);
+    });
   });
 
   describe("Refund upkeep", function () {
     let pool: IUniswapV3Pool;
-    let linkTokensLiquidity: BigNumber;
-    let paymentTokensLiquidity: BigNumber;
-
-    before(async function () {
-      linkTokensLiquidity = ethers.utils.parseEther("100.0");
-      paymentTokensLiquidity = ethers.utils.parseEther("100.0");
-      pool = await setupPool(
-        linkToken,
-        paymentToken,
-        owner,
-        linkTokensLiquidity,
-        paymentTokensLiquidity
-      );
-    });
 
     beforeEach(async function () {
+      pool = await setupPool(
+        linkToken,
+        daiToken,
+        owner,
+        PoolParams.LINK_TOKEN_LIQUIDITY,
+        PoolParams.DAI_TOKEN_LIQUIDITY,
+        STAGING_UNISWAP_V3_FACTORY,
+        NONFUNGIBLE_POSITION_MANAGER
+      );
+
       await network.provider.send("evm_increaseTime", [
-        VestParams.DURATION_IN_SEC_VESTING_PLAN,
+        VestPlanParams.DURATION_IN_SEC,
       ]);
       await network.provider.send("evm_mine");
 
@@ -216,9 +308,9 @@ describe("E2E", function () {
       ).to.be.gt(0);
 
       expect(
-        await dssVest.unpaid(vestId),
+        await dssVest.unpaid(VestPlanParams.ID),
         "no accrued tokens in vest"
-      ).to.equal(VestParams.CAP);
+      ).to.equal(DssVestParams.CAP);
     });
 
     it("should refund upkeep when balance falls below threshold", async function () {
@@ -227,7 +319,11 @@ describe("E2E", function () {
         .callStatic.getUpkeep(upkeepId);
 
       // increase threshold above balance so it has to refund upkeep
-      await topUp.setThreshold(preFundBalance.add(1));
+      await paymentAdapter.file(
+        formatBytes32String("bufferMax"),
+        parseEther("100")
+      );
+      expect(await topUp.shouldRefundUpkeep(), "refund not needed").to.eq(true);
 
       const tx = await keeperRegistryPerformUpkeep(
         registry,
@@ -235,259 +331,17 @@ describe("E2E", function () {
         upkeepId,
         KeeperRegistryParams.F
       );
+
       const { balance: postFundBalance } = await registry
         .connect(ethers.constants.AddressZero)
         .callStatic.getUpkeep(upkeepId);
 
-      const linkFunded = getLINKFundedToUpkeep(tx);
-      const linkSwapped = getLINKSwapped(tx);
+      const linkReceived = getLinkSwapped(tx);
+      const performUpkeepPayment = getUpkeepPerformTotalSpent(tx);
 
-      expect(postFundBalance).to.be.gt(preFundBalance);
-
-      expect(linkFunded).to.eq(linkSwapped);
+      expect(preFundBalance.add(linkReceived).sub(performUpkeepPayment)).eq(
+        postFundBalance
+      );
     });
   });
 });
-
-function getLINKSwapped(tx: ContractReceipt) {
-  const swappedPaymentEventash =
-    "0x40a725f3dd6481375fc982c424861eb4977c23f9079391da9c6a45ddcd72c0e0";
-  const swappedPaymentEvent = tx.events?.find(
-    (e: Event) => e.topics[0] === swappedPaymentEventash
-  );
-  const ABI = [
-    "event SwappedPaymentTokenForLink(uint256 amountIn, uint256 amountOut)",
-  ];
-  const iface = new ethers.utils.Interface(ABI);
-  const { amountOut } = iface.decodeEventLog(
-    "SwappedPaymentTokenForLink",
-    swappedPaymentEvent?.data!
-  );
-  return amountOut;
-}
-
-function getLINKFundedToUpkeep(tx: ContractReceipt) {
-  const upkeepFundedHash =
-    "0x65728e8b0492464959587933b48b3fbaf3cd2132de609fb6ac02dc57dc298d5d";
-
-  const upkeepRefundedEvent = tx.events?.find(
-    (e: Event) => e.topics[0] === upkeepFundedHash
-  );
-  const ABI = ["event UpkeepRefunded(uint256 amount)"];
-  const iface = new ethers.utils.Interface(ABI);
-  const { amount } = iface.decodeEventLog(
-    "UpkeepRefunded",
-    upkeepRefundedEvent?.data!
-  );
-
-  return amount;
-}
-
-async function setupPool(
-  linkToken: LinkTokenMock,
-  paymentToken: ERC20PresetMinterPauser,
-  owner: SignerWithAddress,
-  linkTokensLiquidity: BigNumber,
-  paymentTokensLiquidity: BigNumber
-) {
-  const oneToOneRatio = encodePriceSqrt(BigNumber.from(1), BigNumber.from(1));
-
-  const pool = await createPool(
-    linkToken.address,
-    paymentToken.address,
-    oneToOneRatio,
-    owner
-  );
-
-  const nonfungiblePositionManager = new ethers.Contract(
-    NONFUNGIBLE_POSITION_MANAGER!,
-    NonfungiblePositionManagerABI,
-    owner
-  );
-
-  const minAmountExpectedLink = linkTokensLiquidity.div(2);
-  const minAmountPaymentToken = paymentTokensLiquidity.div(2);
-
-  await addLiquidity(
-    linkToken,
-    paymentToken,
-    nonfungiblePositionManager,
-    owner,
-    linkTokensLiquidity,
-    paymentTokensLiquidity,
-    minAmountExpectedLink,
-    minAmountPaymentToken
-  );
-  return pool;
-}
-
-async function setupChainlinkAutomation(
-  owner: SignerWithAddress,
-  linkToken: LinkTokenMock
-) {
-  const registry = await setupRegistry();
-
-  const registrar = await setupRegistrar(owner, linkToken, registry);
-
-  const signersAddresses = getRegistrySigners().map((signer) => {
-    return signer.address;
-  });
-
-  const [registrySigner] = getRegistrySigners();
-  await configRegistry(
-    registry,
-    registrar.address,
-    signersAddresses,
-    KeeperRegistryParams.F
-  );
-
-  // fund registrySigner1 with some ETH so it can execute performUpkeep
-  await owner.sendTransaction({
-    to: registrySigner.address,
-    value: ethers.utils.parseEther("1.0"),
-  });
-  return { registry, registrar };
-}
-
-async function setupRegistry() {
-  const Registry = await ethers.getContractFactory("KeeperRegistry2_0");
-  const registry = (await Registry.deploy(
-    KeeperRegistryParams.KEEPER_REGISTRY_LOGIC
-  )) as KeeperRegistry20;
-  return registry;
-}
-
-async function setupDssCronKeeper(sequencer: Sequencer) {
-  const DssCronKeeper = await ethers.getContractFactory("DssCronKeeper");
-  const cronKeeper = await DssCronKeeper.deploy(
-    sequencer.address,
-    formatBytes32String("test")
-  );
-  return cronKeeper;
-}
-
-async function setupSampleJob(sequencer: Sequencer) {
-  const SampleJob = await ethers.getContractFactory("SampleJob");
-  const job = await SampleJob.deploy(sequencer.address, 100);
-  await sequencer.addJob(job.address);
-  return job;
-}
-
-async function setupSequencer() {
-  const Sequencer = await ethers.getContractFactory("Sequencer");
-  const sequencer = await Sequencer.deploy();
-  await sequencer.file(formatBytes32String("window"), 1);
-  await sequencer.addNetwork(formatBytes32String("test"));
-  return sequencer;
-}
-
-async function setupVest(
-  dssVest: DssVestMintable,
-  topUp: DssVestTopUp,
-  owner: SignerWithAddress,
-  vestId: BigNumber
-) {
-  const blockNum = await ethers.provider.getBlockNumber();
-  const block = await ethers.provider.getBlock(blockNum);
-  const now = block.timestamp;
-  const createVestTx = await dssVest.create(
-    topUp.address,
-    VestParams.TOTAL_AMOUNT_VESTING_PLAN,
-    now,
-    VestParams.DURATION_IN_SEC_VESTING_PLAN,
-    VestParams.CLIFF_PERIOD_IN_SEC,
-    owner.address
-  );
-
-  const createVestRc = await createVestTx.wait();
-  const createVestEvent = createVestRc.events?.find(
-    (e: Event) => e.event === "Init"
-  );
-
-  const [createVestValue] = createVestEvent?.args || [];
-  vestId = createVestValue;
-  await topUp.setVestId(vestId);
-  return vestId;
-}
-
-async function setupDssVestTopup(
-  dssVest: DssVestMintable,
-  daiJoinMock: DaiJoinMock,
-  paymentToken: ERC20PresetMinterPauser,
-  registry: KeeperRegistry20,
-  linkToken: LinkTokenMock,
-  upkeepId: string,
-  cronKeeper: DssCronKeeper,
-  vow: string,
-  stagingSwapRouter: string,
-  stagingPaymentUSDPrriceFeed: string,
-  stagingLinkUSDPriceFeed: string
-) {
-  const DssVestTopUp = await ethers.getContractFactory("DssVestTopUp");
-  const topUp: DssVestTopUp = (await DssVestTopUp.deploy(
-    dssVest.address,
-    daiJoinMock.address,
-    vow,
-    paymentToken.address,
-    registry.address,
-    stagingSwapRouter,
-    linkToken.address,
-    stagingPaymentUSDPrriceFeed,
-    stagingLinkUSDPriceFeed,
-    TopUpParams.MIN_WITHDRAW_AMT_PAYMENT_TOKEN,
-    TopUpParams.MAX_DEPOSIT_AMT_PAYMENT_TOKEN,
-    TopUpParams.THRESHOLD_LINK
-  )) as DssVestTopUp;
-  await topUp.deployed();
-  await topUp.setUpkeepId(upkeepId);
-  await cronKeeper.setUpkeepRefunder(topUp.address);
-  return topUp;
-}
-
-async function setupDaiJoin(paymentToken: ERC20PresetMinterPauser) {
-  const DaiJoinMock = await ethers.getContractFactory("DaiJoinMock");
-  const daiJoinMock = await DaiJoinMock.deploy(paymentToken.address);
-  await daiJoinMock.deployed();
-  return daiJoinMock;
-}
-
-async function setupDssVest(paymentToken: ERC20PresetMinterPauser) {
-  const DssVest = await ethers.getContractFactory("DssVestMintable");
-  const dssVest: DssVestMintable = await DssVest.deploy(paymentToken.address);
-  await dssVest.deployed();
-  await dssVest.file(formatBytes32String("cap"), VestParams.CAP);
-  await paymentToken.grantRole(
-    keccak256(toUtf8Bytes("MINTER_ROLE")),
-    dssVest.address
-  );
-  return dssVest;
-}
-
-async function setupRegistrar(
-  owner: SignerWithAddress,
-  linkToken: LinkTokenMock,
-  registry: KeeperRegistry20
-) {
-  const KeeperRegistrar = await ethers.getContractFactory("KeeperRegistrar2_0");
-  const registrar: KeeperRegistrar20 = (await KeeperRegistrar.connect(
-    owner
-  ).deploy(
-    linkToken.address,
-    KeeperRegistrarParams.AUTO_APPROVE_CONFIG_TYPE.ALLOW_ALL,
-    KeeperRegistrarParams.AUTO_APPROVE_MAX_ALLOWED,
-    registry.address,
-    KeeperRegistrarParams.MIN_UPKEEP_SPEND
-  )) as KeeperRegistrar20;
-  return registrar;
-}
-
-async function setupPaymentToken(owner: SignerWithAddress) {
-  const ERC20 = await ethers.getContractFactory("ERC20PresetMinterPauser");
-  const paymentToken: ERC20PresetMinterPauser = await ERC20.deploy(
-    "Test",
-    "TST"
-  );
-  await paymentToken.mint(owner.address, ethers.utils.parseEther("100.0"));
-  await paymentToken.deployed();
-  return paymentToken;
-}

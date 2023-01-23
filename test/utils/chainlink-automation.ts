@@ -1,13 +1,88 @@
 import { BigNumber, Wallet, constants } from "ethers";
 import { ethers } from "hardhat";
-import { KeeperRegistry20 } from "../../typechain/KeeperRegistry20";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import {
+  KeeperRegistry20,
+  KeeperRegistrar20,
+  LinkTokenMock,
+} from "../../typechain";
 
 const { HashZero } = ethers.constants;
+const { formatBytes32String, Interface } = ethers.utils;
 
 const linkEth = BigNumber.from(5000000000000000); // 1 Link = 0.005 Eth
 const gasWei = BigNumber.from(1000000000); // 1 gwei
 const EPOCH_AND_ROUND_5_1 =
   "0x0000000000000000000000000000000000000000000000000000000000000501";
+
+export const KeeperRegistrarParams = {
+  AUTO_APPROVE_CONFIG_TYPE: {
+    NONE: 0,
+    WHITELIST: 1,
+    ALLOW_ALL: 2,
+  },
+  AUTO_APPROVE_MAX_ALLOWED: BigNumber.from(20),
+  MIN_UPKEEP_SPEND: BigNumber.from("1000"),
+};
+
+export const KeeperRegistryParams = {
+  F: 1,
+};
+
+export async function setupChainlinkAutomation(
+  owner: SignerWithAddress,
+  linkToken: LinkTokenMock,
+  keeperRegistryLogicAddress: string
+) {
+  const registry = await deployRegistry(keeperRegistryLogicAddress);
+
+  const registrar = await deployRegistrar(owner, linkToken, registry);
+
+  const signersAddresses = getRegistrySigners().map((signer) => {
+    return signer.address;
+  });
+
+  const [registrySigner] = getRegistrySigners();
+  await configRegistry(
+    registry,
+    registrar.address,
+    signersAddresses,
+    KeeperRegistryParams.F
+  );
+
+  // fund registrySigner1 with some ETH so it can execute performUpkeep
+  await owner.sendTransaction({
+    to: registrySigner.address,
+    value: ethers.utils.parseEther("1.0"),
+  });
+  return { registry, registrar };
+}
+
+async function deployRegistry(keeperRegistryLogicAddress: string) {
+  const Registry = await ethers.getContractFactory("KeeperRegistry2_0");
+  const registry = (await Registry.deploy(
+    keeperRegistryLogicAddress
+  )) as KeeperRegistry20;
+  return registry;
+}
+
+async function deployRegistrar(
+  owner: SignerWithAddress,
+  linkToken: LinkTokenMock,
+  registry: KeeperRegistry20
+) {
+  const KeeperRegistrar = await ethers.getContractFactory("KeeperRegistrar2_0");
+  const registrar: KeeperRegistrar20 = (await KeeperRegistrar.connect(
+    owner
+  ).deploy(
+    linkToken.address,
+    KeeperRegistrarParams.AUTO_APPROVE_CONFIG_TYPE.ALLOW_ALL,
+    KeeperRegistrarParams.AUTO_APPROVE_MAX_ALLOWED,
+    registry.address,
+    KeeperRegistrarParams.MIN_UPKEEP_SPEND
+  )) as KeeperRegistrar20;
+  return registrar;
+}
 
 function encodeReport(
   upkeeps: any,
@@ -59,7 +134,7 @@ function encodeConfig(config: any) {
   );
 }
 
-export async function configRegistry(
+async function configRegistry(
   registry: KeeperRegistry20,
   registrarAddress: string,
   signersAddress: string[],
@@ -104,7 +179,7 @@ export async function configRegistry(
   );
 }
 
-export async function transmit(
+async function transmit(
   registry: KeeperRegistry20,
   transmitter: Wallet,
   upkeepIds: any,
@@ -196,4 +271,48 @@ export function getRegistrySigners() {
   signers.push(signer1, signer2, signer3, signer4, signer5);
 
   return signers;
+}
+
+export async function registerUpkeep(
+  contractAddress: string,
+  linkTokenAddress: string,
+  keeperRegistrarAddress: string,
+  adminAddress: string,
+  adminEmail: string,
+  upkeepName: string,
+  gasLimit: number,
+  offchainConfig: string,
+  initialFunding: BigNumber,
+  checkData: string
+): Promise<string> {
+  const KeeperRegistrarAbi = [
+    "function register(string memory name, bytes calldata encryptedEmail, address upkeepContract, uint32 gasLimit, address adminAddress, bytes calldata checkData, bytes calldata offchainConfig, uint96 amount, address sender)",
+  ];
+  const iface = new Interface(KeeperRegistrarAbi);
+  const registerEncoded = iface.encodeFunctionData("register", [
+    upkeepName,
+    formatBytes32String(adminEmail),
+    contractAddress,
+    gasLimit,
+    adminAddress,
+    checkData,
+    offchainConfig,
+    initialFunding,
+    adminAddress,
+  ]);
+  const LinkTokenMock = await ethers.getContractFactory("LinkTokenMock");
+  const linkToken = LinkTokenMock.attach(linkTokenAddress);
+  const registerTx = await linkToken.transferAndCall(
+    keeperRegistrarAddress,
+    initialFunding,
+    registerEncoded
+  );
+  // get upkeep id
+  const registerRc = await registerTx.wait();
+  const registrarEvents = registerRc.events?.filter(
+    (e) => e.address === keeperRegistrarAddress
+  );
+  const registrationApprovedEvent = registrarEvents && registrarEvents[1];
+  const upkeepIdHex = registrationApprovedEvent?.topics[2];
+  return BigNumber.from(upkeepIdHex).toString();
 }

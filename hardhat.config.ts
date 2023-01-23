@@ -9,9 +9,6 @@ import "solidity-coverage";
 
 dotenv.config();
 
-const GOERLI_RPC_URL: string = process.env.GOERLI_URL || "";
-const BLOCK_NUMBER: number = parseInt(process.env.BLOCK_NUMBER!);
-
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
 task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
@@ -25,50 +22,45 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
 
+const compilerSettings = {
+  optimizer: {
+    runs: 200,
+    enabled: true,
+  },
+};
+
 const config: HardhatUserConfig = {
   solidity: {
     compilers: [
       {
         version: "0.8.13",
-        settings: {
-          optimizer: {
-            runs: 200,
-            enabled: true,
-          },
-        },
+        settings: compilerSettings,
       },
       {
         version: "0.8.9",
-        settings: {
-          optimizer: {
-            runs: 200,
-            enabled: true,
-          },
-        },
+        settings: compilerSettings,
       },
       {
         version: "0.8.6",
-        settings: {
-          optimizer: {
-            runs: 200,
-            enabled: true,
-          },
-        },
+        settings: compilerSettings,
       },
       {
         version: "0.7.6",
+        settings: compilerSettings,
       },
       {
         version: "0.7.0",
+        settings: compilerSettings,
       },
       {
         version: "0.6.12",
+        settings: compilerSettings,
       },
     ],
   },
   networks: {
     goerli: {
-      url: GOERLI_RPC_URL,
+      url: process.env.GOERLI_RPC_URL || "",
       accounts:
         process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
@@ -90,8 +82,8 @@ const config: HardhatUserConfig = {
 if (process.env.FORK_ENABLED === "true") {
   config.networks!.hardhat = {
     forking: {
-      url: GOERLI_RPC_URL,
-      blockNumber: BLOCK_NUMBER,
+      url: process.env.GOERLI_URL || "",
+      blockNumber: parseInt(process.env.BLOCK_NUMBER || ""),
     },
   };
 }

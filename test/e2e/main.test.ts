@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
-import { BigNumberish, ContractReceipt, Event, Wallet } from "ethers";
+import { BigNumberish, ContractReceipt, Wallet } from "ethers";
 
 import {
   registerUpkeep,
@@ -35,8 +35,7 @@ import {
   NetworkPaymentAdapter,
 } from "../../typechain";
 
-const { parseEther, parseBytes32String, formatBytes32String, Interface } =
-  ethers.utils;
+const { parseEther, parseBytes32String, formatBytes32String } = ethers.utils;
 
 const {
   KEEPER_REGISTRY_LOGIC,
@@ -137,21 +136,6 @@ async function deployDssVestTopup(
 function getUpkeepPerformTotalSpent(tx: ContractReceipt) {
   return tx.events?.find((e) => e.event === "UpkeepPerformed")?.args
     ?.totalPayment;
-}
-
-function getLinkSwapped(tx: ContractReceipt) {
-  const swappedPaymentEventHash =
-    "0x577da16e6f562ccc727dadd3c8a9fc35185178abf4e92c79b84634d64aba6d7c";
-  const swappedPaymentEvent = tx.events?.find(
-    (e: Event) => e.topics[0] === swappedPaymentEventHash
-  );
-  const ABI = ["event SwappedDaiForLink(uint256 amountIn, uint256 amountOut)"];
-  const iface = new Interface(ABI);
-  const { amountOut } = iface.decodeEventLog(
-    "SwappedDaiForLink",
-    swappedPaymentEvent?.data!
-  );
-  return amountOut;
 }
 
 describe("E2E", function () {
@@ -339,7 +323,13 @@ describe("E2E", function () {
         .connect(ethers.constants.AddressZero)
         .callStatic.getUpkeep(upkeepId);
 
-      const linkReceived = getLinkSwapped(tx);
+      const swappedDAIEventABI = [
+        "event SwappedDaiForLink(uint256 amountIn, uint256 amountOut)",
+      ];
+      const { amountOut: linkReceived } = parseEventFromABI(
+        tx,
+        swappedDAIEventABI
+      );
       const performUpkeepPayment = getUpkeepPerformTotalSpent(tx);
 
       expect(preFundBalance.add(linkReceived).sub(performUpkeepPayment)).eq(

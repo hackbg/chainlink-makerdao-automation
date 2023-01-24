@@ -57,7 +57,7 @@ export async function setupPool(
 ) {
   const oneToOneRatio = encodePriceSqrt(BigNumber.from(1), BigNumber.from(1));
 
-  const pool = await createPool(
+  const pool = await findOrCreatePool(
     token0.address,
     token1.address,
     oneToOneRatio,
@@ -84,6 +84,38 @@ export async function setupPool(
     minAmountExpectedLink,
     minAmountDaiToken
   );
+  return pool;
+}
+
+export async function findOrCreatePool(
+  token0: string,
+  token1: string,
+  ratio: BigNumber,
+  provider: SignerWithAddress,
+  uniswapFactory: string
+): Promise<IUniswapV3Pool> {
+  const uniswapFactoryContract = new ethers.Contract(
+    uniswapFactory,
+    UniswapV3FactoryABI,
+    provider
+  );
+  let pool: IUniswapV3Pool;
+  const poolAddress = await uniswapFactoryContract.getPool(
+    token0,
+    token1,
+    FeeAmount.MEDIUM
+  );
+
+  const doesPoolExist = poolAddress !== ethers.constants.AddressZero;
+  if (doesPoolExist) {
+    pool = new ethers.Contract(
+      poolAddress,
+      IUniswapV3PoolABI,
+      provider
+    ) as IUniswapV3Pool;
+  } else {
+    pool = await createPool(token0, token1, ratio, provider, uniswapFactory);
+  }
   return pool;
 }
 

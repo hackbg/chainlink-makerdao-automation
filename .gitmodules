@@ -4,7 +4,3 @@
 [submodule "vendor/dss-vest"]
 	path = vendor/dss-vest
 	url = https://github.com/makerdao/dss-vest
-[submodule "vendor/dss-cron-standard-payment"]
-	path = vendor/dss-cron-standard-payment
-	url = https://github.com/makerdao/dss-cron
-	branch = standardize-payment-interface

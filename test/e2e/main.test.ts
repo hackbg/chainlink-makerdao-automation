@@ -66,7 +66,6 @@ describe("E2E", function () {
     // setup sequencer
     const Sequencer = await ethers.getContractFactory("Sequencer");
     const sequencer = await Sequencer.deploy();
-    await sequencer.file(formatBytes32String("window"), 1);
     const SampleJob = await ethers.getContractFactory("SampleJob");
     job = await SampleJob.deploy(sequencer.address, 100);
     await sequencer.addJob(job.address);
@@ -89,7 +88,7 @@ describe("E2E", function () {
       sequencer.address,
       networkName
     );
-    await sequencer.addNetwork(networkName);
+    await sequencer.addNetwork(networkName, 1);
 
     // setup chainlink automation contracts
     ({ registry, registrar } = await chainlink.setupChainlinkAutomation(
@@ -144,13 +143,22 @@ describe("E2E", function () {
     const treasury = topUp.address;
     paymentAdapter = await NetworkPaymentAdapter.deploy(
       dssVest.address,
-      vestingPlanId,
-      treasury,
       daiJoin.address,
       vowAddress
     );
-    await paymentAdapter.file(formatBytes32String("bufferMax"), bufferMax);
-    await paymentAdapter.file(
+    await paymentAdapter["file(bytes32,address)"](
+      formatBytes32String("treasury"),
+      treasury
+    );
+    await paymentAdapter["file(bytes32,uint256)"](
+      formatBytes32String("vestId"),
+      vestingPlanId
+    );
+    await paymentAdapter["file(bytes32,uint256)"](
+      formatBytes32String("bufferMax"),
+      bufferMax
+    );
+    await paymentAdapter["file(bytes32,uint256)"](
       formatBytes32String("minimumPayment"),
       minPayment
     );
@@ -228,7 +236,7 @@ describe("E2E", function () {
         upkeepId
       );
       // increase threshold above balance so it has to refund upkeep
-      await paymentAdapter.file(
+      await paymentAdapter["file(bytes32,uint256)"](
         formatBytes32String("bufferMax"),
         parseEther("100")
       );

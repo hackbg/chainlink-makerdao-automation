@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import "../vendor/dss-cron-standard-payment/src/INetworkTreasury.sol";
+import "../vendor/dss-cron/src/interfaces/INetworkTreasury.sol";
 import "./interfaces/IUpkeepRefunder.sol";
 
 interface NetworkPaymentAdapterLike {

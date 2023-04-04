@@ -36,11 +36,7 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
     /**
      * @notice Check whether upkeep needs funding or there is a pending job
      */
-    function checkUpkeep(bytes calldata)
-        external
-        override
-        returns (bool, bytes memory)
-    {
+    function checkUpkeep(bytes calldata) external override returns (bool, bytes memory) {
         if (address(upkeepRefunder) != address(0) && upkeepRefunder.shouldRefundUpkeep()) {
             return (true, abi.encodeWithSelector(this.refundUpkeep.selector));
         }

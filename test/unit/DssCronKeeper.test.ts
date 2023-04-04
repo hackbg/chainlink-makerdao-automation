@@ -28,8 +28,7 @@ describe("DssCronKeeper", function () {
   beforeEach(async function () {
     const Sequencer = await ethers.getContractFactory("Sequencer");
     sequencer = await Sequencer.deploy();
-    await sequencer.file(formatBytes32String("window"), 1);
-    await sequencer.addNetwork(formatBytes32String("test"));
+    await sequencer.addNetwork(formatBytes32String("test"), 1);
 
     const SampleJob = await ethers.getContractFactory("SampleJob");
     job = await SampleJob.deploy(sequencer.address, 100);

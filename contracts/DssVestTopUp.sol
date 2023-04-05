@@ -49,9 +49,9 @@ contract DssVestTopUp is IUpkeepRefunder, INetworkTreasury, Ownable {
     uint8 public immutable priceFeedDecimals;
 
     // PARAMS
-    uint24 public uniswapPoolFee;
-    uint24 public slippageTolerancePercent;
     uint256 public upkeepId;
+    bytes public uniswapPath;
+    uint24 public slippageTolerancePercent;
     NetworkPaymentAdapterLike public paymentAdapter;
     KeeperRegistryLike public keeperRegistry;
 
@@ -62,7 +62,7 @@ contract DssVestTopUp is IUpkeepRefunder, INetworkTreasury, Ownable {
     event PaymentAdapterSet(address paymentAdapter);
     event KeeperRegistrySet(address keeperRegistry);
     event UpkeepIdSet(uint256 upkeepId);
-    event UniswapPoolFeeSet(uint24 poolFee);
+    event UniswapPathSet(bytes poolFee);
     event SlippageToleranceSet(uint24 slippageTolerancePercent);
 
     // ERRORS
@@ -76,8 +76,8 @@ contract DssVestTopUp is IUpkeepRefunder, INetworkTreasury, Ownable {
         address _daiUsdPriceFeed,
         address _linkUsdPriceFeed,
         address _swapRouter,
-        uint24 _uniswapPoolFee,
-        uint24 _slippageTolerancePercent
+        uint24 _slippageTolerancePercent,
+        bytes memory _uniswapPath
     ) {
         if (_upkeepId == 0) revert InvalidParam("Upkeep ID");
         if (_keeperRegistry == address(0)) revert InvalidParam("KeeperRegistry");
@@ -86,6 +86,7 @@ contract DssVestTopUp is IUpkeepRefunder, INetworkTreasury, Ownable {
         if (_daiUsdPriceFeed == address(0)) revert InvalidParam("DAI/USD Price Feed");
         if (_linkUsdPriceFeed == address(0)) revert InvalidParam("LINK/USD Price Feed");
         if (_swapRouter == address(0)) revert InvalidParam("Uniswap Router");
+        if (_uniswapPath.length == 0) revert InvalidParam("Uniswap Path");
 
         upkeepId = _upkeepId;
         keeperRegistry = KeeperRegistryLike(_keeperRegistry);
@@ -94,7 +95,7 @@ contract DssVestTopUp is IUpkeepRefunder, INetworkTreasury, Ownable {
         daiUsdPriceFeed = _daiUsdPriceFeed;
         linkUsdPriceFeed = _linkUsdPriceFeed;
         swapRouter = ISwapRouter(_swapRouter);
-        uniswapPoolFee = _uniswapPoolFee;
+        uniswapPath = _uniswapPath;
         slippageTolerancePercent = _slippageTolerancePercent;
 
         // Validate price oracle decimals
@@ -132,17 +133,14 @@ contract DssVestTopUp is IUpkeepRefunder, INetworkTreasury, Ownable {
     // HELPERS
 
     function _swapDaiForLink(uint256 _daiAmountIn) internal returns (uint256 linkAmountOut) {
-        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
-            tokenIn: daiToken,
-            tokenOut: linkToken,
-            fee: uniswapPoolFee,
+        ISwapRouter.ExactInputParams memory params = ISwapRouter.ExactInputParams({
+            path: uniswapPath,
             recipient: address(this),
             deadline: block.timestamp,
             amountIn: _daiAmountIn,
-            amountOutMinimum: _getDaiLinkSwapOutMin(_daiAmountIn),
-            sqrtPriceLimitX96: 0
+            amountOutMinimum: _getDaiLinkSwapOutMin(_daiAmountIn)
         });
-        linkAmountOut = swapRouter.exactInputSingle(params);
+        linkAmountOut = swapRouter.exactInput(params);
         emit SwappedDaiForLink(_daiAmountIn, linkAmountOut);
     }
 
@@ -191,9 +189,10 @@ contract DssVestTopUp is IUpkeepRefunder, INetworkTreasury, Ownable {
         emit UpkeepIdSet(_upkeepId);
     }
 
-    function setUniswapPoolFee(uint24 _uniswapPoolFee) external onlyOwner {
-        uniswapPoolFee = _uniswapPoolFee;
-        emit UniswapPoolFeeSet(_uniswapPoolFee);
+    function setUniswapPath(bytes memory _uniswapPath) external onlyOwner {
+        if (_uniswapPath.length == 0) revert InvalidParam("Uniswap Path");
+        uniswapPath = _uniswapPath;
+        emit UniswapPathSet(_uniswapPath);
     }
 
     function setSlippageTolerance(uint24 _slippageTolerancePercent) external onlyOwner {

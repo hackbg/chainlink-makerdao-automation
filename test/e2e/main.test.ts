@@ -118,9 +118,13 @@ describe("E2E", function () {
     );
 
     // setup topup contract
-    const DssVestTopUp = await ethers.getContractFactory("DssVestTopUp");
     const uniswapPoolFee = 3000;
     const slippageTolerancePercent = 2;
+    const uniswapPath = ethers.utils.solidityPack(
+      ["address", "uint24", "address"],
+      [daiToken.address, uniswapPoolFee, linkToken.address]
+    );
+    const DssVestTopUp = await ethers.getContractFactory("DssVestTopUp");
     topUp = await DssVestTopUp.deploy(
       upkeepId,
       registry.address,
@@ -129,8 +133,8 @@ describe("E2E", function () {
       daiUsdPriceFeedAddress,
       linkUsdPriceFeedAddress,
       swapRouterAddress,
-      uniswapPoolFee,
-      slippageTolerancePercent
+      slippageTolerancePercent,
+      uniswapPath
     );
 
     // setup network payment adapter

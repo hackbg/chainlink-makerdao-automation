@@ -13,8 +13,8 @@ const {
   DAI_USD_PRICE_FEED,
   LINK_USD_PRICE_FEED,
   SWAP_ROUTER_V3,
-  UNISWAP_POOL_FEE,
   SLIPPAGE_TOLERANCE_PERCENT,
+  UNISWAP_PATH,
 } = process.env;
 
 async function main() {
@@ -33,11 +33,17 @@ async function main() {
     !DAI_USD_PRICE_FEED ||
     !LINK_USD_PRICE_FEED ||
     !SWAP_ROUTER_V3 ||
-    !UNISWAP_POOL_FEE ||
-    !SLIPPAGE_TOLERANCE_PERCENT
+    !SLIPPAGE_TOLERANCE_PERCENT ||
+    !UNISWAP_PATH
   ) {
     throw new Error("Missing required env variable(s)!");
   }
+
+  const pathElements = UNISWAP_PATH.split(",").map((el) => el.trim());
+  const pathEncoded = ethers.utils.solidityPack(
+    pathElements.map((_, idx) => (idx % 2 === 0 ? "address" : "uint24")),
+    pathElements
+  );
 
   const DssVestTopUp = await ethers.getContractFactory("DssVestTopUp");
   const topUp = await DssVestTopUp.deploy(
@@ -48,8 +54,8 @@ async function main() {
     DAI_USD_PRICE_FEED,
     LINK_USD_PRICE_FEED,
     SWAP_ROUTER_V3,
-    UNISWAP_POOL_FEE,
-    SLIPPAGE_TOLERANCE_PERCENT
+    SLIPPAGE_TOLERANCE_PERCENT,
+    pathEncoded
   );
   await topUp.deployed();
   console.log("DssVestTopUp deployed to:", topUp.address);

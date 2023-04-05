@@ -18,7 +18,7 @@ describe("DssVestTopUp", function () {
   const daiUsdPrice = parseUnits("1", usdFeedDecimals);
   const linkUsdPrice = parseUnits("5", usdFeedDecimals);
   const fakeUpkeepId = 1;
-  const uniswapPoolFee = 1000;
+  const uniswapPath = ethers.constants.HashZero;
   const slippageTolerancePercent = 1;
 
   let topUp: DssVestTopUp;
@@ -47,7 +47,10 @@ describe("DssVestTopUp", function () {
 
     // setup uniswap router mock
     const SwapRouterMock = await ethers.getContractFactory("SwapRouterMock");
-    swapRouterMock = await SwapRouterMock.deploy();
+    swapRouterMock = await SwapRouterMock.deploy(
+      daiToken.address,
+      linkToken.address
+    );
 
     // setup price feed mocks
     const MockV3Aggregator = await ethers.getContractFactory(
@@ -72,8 +75,8 @@ describe("DssVestTopUp", function () {
       daiUsdPriceFeedMock.address,
       linkUsdPriceFeedMock.address,
       swapRouterMock.address,
-      uniswapPoolFee,
-      slippageTolerancePercent
+      slippageTolerancePercent,
+      uniswapPath
     );
 
     // setup payment adapter mock

@@ -65,6 +65,15 @@ describe("DssVestTopUp", function () {
       linkUsdPrice
     );
 
+    // setup payment adapter mock
+    const NetworkPaymentAdapterMock = await ethers.getContractFactory(
+      "NetworkPaymentAdapterMock"
+    );
+    paymentAdapterMock = await NetworkPaymentAdapterMock.deploy(
+      daiToken.address,
+      topUpAmount
+    );
+
     // setup topup contract
     const DssVestTopUp = await ethers.getContractFactory("DssVestTopUp");
     topUp = await DssVestTopUp.deploy(
@@ -72,6 +81,7 @@ describe("DssVestTopUp", function () {
       keeperRegistryMock.address,
       daiToken.address,
       linkToken.address,
+      paymentAdapterMock.address,
       daiUsdPriceFeedMock.address,
       linkUsdPriceFeedMock.address,
       swapRouterMock.address,
@@ -79,16 +89,8 @@ describe("DssVestTopUp", function () {
       uniswapPath
     );
 
-    // setup payment adapter mock
-    const NetworkPaymentAdapterMock = await ethers.getContractFactory(
-      "NetworkPaymentAdapterMock"
-    );
-    paymentAdapterMock = await NetworkPaymentAdapterMock.deploy(
-      daiToken.address,
-      topUp.address,
-      topUpAmount
-    );
-    await topUp.setPaymentAdapter(paymentAdapterMock.address);
+    // set topup contract as treasury in payment adapter
+    paymentAdapterMock.setTreasury(topUp.address);
 
     // allowing payment adapter mock to simulate dai transfer
     await daiToken.grantRole(

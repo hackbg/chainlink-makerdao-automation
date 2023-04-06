@@ -8,14 +8,13 @@ contract NetworkPaymentAdapterMock {
     address public treasury;
     uint256 public topUpAmount;
 
-    constructor(
-        address _daiToken,
-        address _treasury,
-        uint256 _topUpAmount
-    ) {
+    constructor(address _daiToken, uint256 _topUpAmount) {
         paymentToken = ERC20PresetMinterPauser(_daiToken);
-        treasury = _treasury;
         topUpAmount = _topUpAmount;
+    }
+
+    function setTreasury(address _treasury) external {
+        treasury = _treasury;
     }
 
     function topUp() external returns (uint256 daiSent) {

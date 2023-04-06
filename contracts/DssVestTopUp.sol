@@ -73,6 +73,7 @@ contract DssVestTopUp is IUpkeepRefunder, INetworkTreasury, Ownable {
         address _keeperRegistry,
         address _daiToken,
         address _linkToken,
+        address _paymentAdapter,
         address _daiUsdPriceFeed,
         address _linkUsdPriceFeed,
         address _swapRouter,
@@ -83,6 +84,7 @@ contract DssVestTopUp is IUpkeepRefunder, INetworkTreasury, Ownable {
         if (_keeperRegistry == address(0)) revert InvalidParam("KeeperRegistry");
         if (_daiToken == address(0)) revert InvalidParam("DAI Token");
         if (_linkToken == address(0)) revert InvalidParam("LINK Token");
+        if (_paymentAdapter == address(0)) revert InvalidParam("Payment Adapter");
         if (_daiUsdPriceFeed == address(0)) revert InvalidParam("DAI/USD Price Feed");
         if (_linkUsdPriceFeed == address(0)) revert InvalidParam("LINK/USD Price Feed");
         if (_swapRouter == address(0)) revert InvalidParam("Uniswap Router");
@@ -92,6 +94,7 @@ contract DssVestTopUp is IUpkeepRefunder, INetworkTreasury, Ownable {
         keeperRegistry = KeeperRegistryLike(_keeperRegistry);
         daiToken = _daiToken;
         linkToken = _linkToken;
+        paymentAdapter = NetworkPaymentAdapterLike(_paymentAdapter);
         daiUsdPriceFeed = _daiUsdPriceFeed;
         linkUsdPriceFeed = _linkUsdPriceFeed;
         swapRouter = ISwapRouter(_swapRouter);

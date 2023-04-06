@@ -117,26 +117,6 @@ describe("E2E", function () {
       upkeepCheckData
     );
 
-    // setup topup contract
-    const uniswapPoolFee = 3000;
-    const slippageTolerancePercent = 2;
-    const uniswapPath = ethers.utils.solidityPack(
-      ["address", "uint24", "address"],
-      [daiToken.address, uniswapPoolFee, linkToken.address]
-    );
-    const DssVestTopUp = await ethers.getContractFactory("DssVestTopUp");
-    topUp = await DssVestTopUp.deploy(
-      upkeepId,
-      registry.address,
-      daiToken.address,
-      linkToken.address,
-      daiUsdPriceFeedAddress,
-      linkUsdPriceFeedAddress,
-      swapRouterAddress,
-      slippageTolerancePercent,
-      uniswapPath
-    );
-
     // setup network payment adapter
     const NetworkPaymentAdapter = await ethers.getContractFactory(
       "NetworkPaymentAdapter"
@@ -144,15 +124,10 @@ describe("E2E", function () {
     const vestingPlanId = 1;
     const bufferMax = parseEther("1");
     const minPayment = parseEther("1");
-    const treasury = topUp.address;
     paymentAdapter = await NetworkPaymentAdapter.deploy(
       dssVest.address,
       daiJoin.address,
       vowAddress
-    );
-    await paymentAdapter["file(bytes32,address)"](
-      formatBytes32String("treasury"),
-      treasury
     );
     await paymentAdapter["file(bytes32,uint256)"](
       formatBytes32String("vestId"),
@@ -166,7 +141,33 @@ describe("E2E", function () {
       formatBytes32String("minimumPayment"),
       minPayment
     );
-    await topUp.setPaymentAdapter(paymentAdapter.address);
+
+    // setup topup contract
+    const uniswapPoolFee = 3000;
+    const slippageTolerancePercent = 2;
+    const uniswapPath = ethers.utils.solidityPack(
+      ["address", "uint24", "address"],
+      [daiToken.address, uniswapPoolFee, linkToken.address]
+    );
+    const DssVestTopUp = await ethers.getContractFactory("DssVestTopUp");
+    topUp = await DssVestTopUp.deploy(
+      upkeepId,
+      registry.address,
+      daiToken.address,
+      linkToken.address,
+      paymentAdapter.address,
+      daiUsdPriceFeedAddress,
+      linkUsdPriceFeedAddress,
+      swapRouterAddress,
+      slippageTolerancePercent,
+      uniswapPath
+    );
+
+    // set topup contract as treasury in payment adapter
+    await paymentAdapter["file(bytes32,address)"](
+      formatBytes32String("treasury"),
+      topUp.address
+    );
 
     // create vesting plan
     const blockNum = await ethers.provider.getBlockNumber();

@@ -65,17 +65,17 @@ Copy the `.env.example` to `.env` file and make sure you've set all of the follo
 
 3. `DssVestTopUp`
 
-| Name                         | Description                                                                                                                |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `UPKEEP_ID`                  | Unique identifier of the registered upkeep for `DssCronKeeper`                                                             |
-| `KEEPER_REGISTRY_V2`         | Address of `KeeperRegistry` v2                                                                                             |
-| `DAI_TOKEN`                  | Address of `DAI` token                                                                                                     |
-| `LINK_TOKEN`                 | Address of `LINK` token                                                                                                    |
-| `DAI_USD_PRICE_FEED`         | Chainlink price feed for the `DAI / USD` pair                                                                              |
-| `LINK_USD_PRICE_FEED`        | Chainlink price feed for the `LINK / USD` pair                                                                             |
-| `SWAP_ROUTER_V3`             | Address of Uniswap V3 Router                                                                                               |
-| `UNISWAP_POOL_FEE`           | Uniswap pool [fee tier](https://docs.uniswap.org/concepts/protocol/fees#pool-fees-tiers)                                   |
-| `SLIPPAGE_TOLERANCE_PERCENT` | [Price slippage](https://support.uniswap.org/hc/en-us/articles/8643879653261-What-is-Price-Slippage-) tolerance percentage |
+| Name                         | Description                                                                                                                                                                                         |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `UPKEEP_ID`                  | Unique identifier of the registered upkeep for `DssCronKeeper`                                                                                                                                      |
+| `KEEPER_REGISTRY_V2`         | Address of `KeeperRegistry` v2                                                                                                                                                                      |
+| `DAI_TOKEN`                  | Address of `DAI` token                                                                                                                                                                              |
+| `LINK_TOKEN`                 | Address of `LINK` token                                                                                                                                                                             |
+| `DAI_USD_PRICE_FEED`         | Chainlink price feed for the `DAI / USD` pair                                                                                                                                                       |
+| `LINK_USD_PRICE_FEED`        | Chainlink price feed for the `LINK / USD` pair                                                                                                                                                      |
+| `SWAP_ROUTER_V3`             | Address of Uniswap V3 Router                                                                                                                                                                        |
+| `SLIPPAGE_TOLERANCE_PERCENT` | [Price slippage](https://support.uniswap.org/hc/en-us/articles/8643879653261-What-is-Price-Slippage-) tolerance percentage                                                                          |
+| `UNISWAP_PATH`               | Uniswap V3 path for swapping DAI for LINK. Example: `DAI, 500, WETH, 3000, LINK`. Learn more [here](https://docs.uniswap.org/contracts/v3/guides/swaps/multihop-swaps#exact-input-multi-hop-swaps). |
 
 4. Staging environment (Testnet)
 

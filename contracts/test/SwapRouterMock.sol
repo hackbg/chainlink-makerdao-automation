@@ -4,25 +4,30 @@ pragma solidity ^0.8.9;
 import "./ERC20PresetMinterPauser.sol";
 
 contract SwapRouterMock {
-    struct ExactInputSingleParams {
-        address tokenIn;
-        address tokenOut;
-        uint24 fee;
+    address public tokenIn;
+    address public tokenOut;
+
+    struct ExactInputParams {
+        bytes path;
         address recipient;
         uint256 deadline;
         uint256 amountIn;
         uint256 amountOutMinimum;
-        uint160 sqrtPriceLimitX96;
     }
 
-    event ExactInputSingleCalledWith(uint256 amountIn, uint256 amountOutMinimum);
+    event ExactInputCalledWith(uint256 amountIn, uint256 amountOutMinimum);
 
-    function exactInputSingle(ExactInputSingleParams calldata params) external payable returns (uint256 amountOut) {
-        emit ExactInputSingleCalledWith(params.amountIn, params.amountOutMinimum);
+    constructor(address _tokenIn, address _tokenOut) {
+        tokenIn = _tokenIn;
+        tokenOut = _tokenOut;
+    }
 
-        ERC20PresetMinterPauser(params.tokenIn).transferFrom(msg.sender, address(this), params.amountIn);
+    function exactInput(ExactInputParams calldata params) external payable returns (uint256 amountOut) {
+        amountOut = params.amountIn; // 1:1 swap
 
-        amountOut = params.amountIn;
-        ERC20PresetMinterPauser(params.tokenOut).mint(msg.sender, amountOut);
+        ERC20PresetMinterPauser(tokenIn).transferFrom(msg.sender, address(this), params.amountIn);
+        ERC20PresetMinterPauser(tokenOut).mint(msg.sender, amountOut);
+
+        emit ExactInputCalledWith(params.amountIn, params.amountOutMinimum);
     }
 }

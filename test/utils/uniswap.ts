@@ -71,8 +71,8 @@ export async function setupPool(
     owner
   );
 
-  const minAmountExpectedLink = token0Liquidity.div(2);
-  const minAmountDaiToken = token1Liquidity.div(2);
+  const minAmountToken0 = token0Liquidity.div(2);
+  const minAmountToken1 = token1Liquidity.div(2);
 
   await addLiquidity(
     token0,
@@ -81,8 +81,8 @@ export async function setupPool(
     owner,
     token0Liquidity,
     token1Liquidity,
-    minAmountExpectedLink,
-    minAmountDaiToken
+    minAmountToken0,
+    minAmountToken1
   );
   return pool;
 }

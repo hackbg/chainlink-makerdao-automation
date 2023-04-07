@@ -22,7 +22,7 @@ const linkUsdPriceFeedAddress = process.env.STAGING_LINK_USD_PRICE_FEED;
 const daiUsdPriceFeedAddress = process.env.STAGING_PAYMENT_USD_PRICE_FEED;
 const swapRouterAddress = process.env.STAGING_SWAP_ROUTER;
 const uniswapV3FactoryAddress = process.env.STAGING_UNISWAP_V3_FACTORY;
-const vowAddress = process.env.VOW;
+const vowAddress = process.env.STAGING_VOW;
 
 if (
   !keeperRegistryLogicAddress ||

@@ -80,15 +80,16 @@ Copy the `.env.example` to `.env` file and make sure you've set all of the follo
 
 4. End-to-end tests (currently running on a fork of Goerli testnet until the mainnet deployment of KeeperRegistry v2)
 
-| Name                                   | Description                                                        |
-| -------------------------------------- | ------------------------------------------------------------------ |
-| `STAGING_SWAP_ROUTER`                  | Address of Uniswap V3 Router                                       |
-| `STAGING_LINK_TOKEN`                   | Address of ERC-20 token like LINK                                  |
-| `STAGING_PAYMENT_USD_PRICE_FEED`       | Chainlink price feed for the DAI / USD pair                        |
-| `STAGING_LINK_USD_PRICE_FEED`          | Chainlink price feed for the LINK / USD pair                       |
-| `STAGING_UNISWAP_V3_FACTORY`           | Uniswap V3 Factory address                                         |
-| `STAGING_NONFUNGIBLE_POSITION_MANAGER` | NonFungible Position Manager                                       |
-| `STAGING_KEEPER_REGISTRY_LOGIC`        | Address of `KeeperRegistryLogic` used to deploy `KeeperRegistryV2` |
+| Name                                   | Description                                                                                                              |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `STAGING_SWAP_ROUTER`                  | Address of Uniswap V3 Router                                                                                             |
+| `STAGING_LINK_TOKEN`                   | Address of ERC-20 token like LINK                                                                                        |
+| `STAGING_PAYMENT_USD_PRICE_FEED`       | Chainlink price feed for the DAI / USD pair                                                                              |
+| `STAGING_LINK_USD_PRICE_FEED`          | Chainlink price feed for the LINK / USD pair                                                                             |
+| `STAGING_UNISWAP_V3_FACTORY`           | Uniswap V3 Factory address                                                                                               |
+| `STAGING_NONFUNGIBLE_POSITION_MANAGER` | NonFungible Position Manager                                                                                             |
+| `STAGING_KEEPER_REGISTRY_LOGIC`        | Address of `KeeperRegistryLogic` used to deploy `KeeperRegistryV2`                                                       |
+| `STAGING_VOW`                          | Address of [`Vow`](https://docs.makerdao.com/smart-contract-modules/system-stabilizer-module/vow-detailed-documentation) |
 
 Note: All example values are the actual values for Ethereum Mainnet and the staging ones for Goerli testnet.
 

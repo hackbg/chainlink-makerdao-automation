@@ -51,7 +51,7 @@ contract DssVestTopUp is IUpkeepRefunder, INetworkTreasury, Ownable {
     // PARAMS
     uint256 public upkeepId;
     bytes public uniswapPath;
-    uint24 public slippageTolerancePercent;
+    uint24 public slippageToleranceBps;
     NetworkPaymentAdapterLike public paymentAdapter;
     KeeperRegistryLike public keeperRegistry;
 
@@ -62,8 +62,8 @@ contract DssVestTopUp is IUpkeepRefunder, INetworkTreasury, Ownable {
     event PaymentAdapterSet(address paymentAdapter);
     event KeeperRegistrySet(address keeperRegistry);
     event UpkeepIdSet(uint256 upkeepId);
-    event UniswapPathSet(bytes poolFee);
-    event SlippageToleranceSet(uint24 slippageTolerancePercent);
+    event UniswapPathSet(bytes uniswapPath);
+    event SlippageToleranceSet(uint24 slippageToleranceBps);
 
     // ERRORS
     error InvalidParam(string name);
@@ -77,7 +77,7 @@ contract DssVestTopUp is IUpkeepRefunder, INetworkTreasury, Ownable {
         address _daiUsdPriceFeed,
         address _linkUsdPriceFeed,
         address _swapRouter,
-        uint24 _slippageTolerancePercent,
+        uint24 _slippageToleranceBps,
         bytes memory _uniswapPath
     ) {
         if (_upkeepId == 0) revert InvalidParam("Upkeep ID");
@@ -99,7 +99,7 @@ contract DssVestTopUp is IUpkeepRefunder, INetworkTreasury, Ownable {
         linkUsdPriceFeed = _linkUsdPriceFeed;
         swapRouter = ISwapRouter(_swapRouter);
         uniswapPath = _uniswapPath;
-        slippageTolerancePercent = _slippageTolerancePercent;
+        slippageToleranceBps = _slippageToleranceBps;
 
         // Validate price oracle decimals
         uint8 linkUsdDecimals = AggregatorV3Interface(linkUsdPriceFeed).decimals();
@@ -149,7 +149,7 @@ contract DssVestTopUp is IUpkeepRefunder, INetworkTreasury, Ownable {
 
     function _getDaiLinkSwapOutMin(uint256 _daiAmountIn) internal view returns (uint256 minLinkAmountOut) {
         uint256 linkAmount = _convertDaiToLink(_daiAmountIn);
-        uint256 slippageTolerance = (linkAmount * slippageTolerancePercent) / 100;
+        uint256 slippageTolerance = (linkAmount * slippageToleranceBps) / 10000;
         minLinkAmountOut = linkAmount - slippageTolerance;
     }
 
@@ -198,9 +198,9 @@ contract DssVestTopUp is IUpkeepRefunder, INetworkTreasury, Ownable {
         emit UniswapPathSet(_uniswapPath);
     }
 
-    function setSlippageTolerance(uint24 _slippageTolerancePercent) external onlyOwner {
-        slippageTolerancePercent = _slippageTolerancePercent;
-        emit SlippageToleranceSet(_slippageTolerancePercent);
+    function setSlippageTolerance(uint24 _slippageToleranceBps) external onlyOwner {
+        slippageToleranceBps = _slippageToleranceBps;
+        emit SlippageToleranceSet(_slippageToleranceBps);
     }
 
     // MISC

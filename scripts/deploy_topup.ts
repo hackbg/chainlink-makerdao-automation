@@ -14,7 +14,7 @@ const {
   DAI_USD_PRICE_FEED,
   LINK_USD_PRICE_FEED,
   SWAP_ROUTER_V3,
-  SLIPPAGE_TOLERANCE_PERCENT,
+  SLIPPAGE_TOLERANCE_BPS,
   UNISWAP_PATH,
 } = process.env;
 
@@ -35,7 +35,7 @@ async function main() {
     !DAI_USD_PRICE_FEED ||
     !LINK_USD_PRICE_FEED ||
     !SWAP_ROUTER_V3 ||
-    !SLIPPAGE_TOLERANCE_PERCENT ||
+    !SLIPPAGE_TOLERANCE_BPS ||
     !UNISWAP_PATH
   ) {
     throw new Error("Missing required env variable(s)!");
@@ -57,7 +57,7 @@ async function main() {
     DAI_USD_PRICE_FEED,
     LINK_USD_PRICE_FEED,
     SWAP_ROUTER_V3,
-    SLIPPAGE_TOLERANCE_PERCENT,
+    SLIPPAGE_TOLERANCE_BPS,
     pathEncoded
   );
   await topUp.deployed();

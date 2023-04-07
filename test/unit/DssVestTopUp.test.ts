@@ -19,7 +19,7 @@ describe("DssVestTopUp", function () {
   const linkUsdPrice = parseUnits("5", usdFeedDecimals);
   const fakeUpkeepId = 1;
   const uniswapPath = ethers.constants.HashZero;
-  const slippageTolerancePercent = 1;
+  const slippageToleranceBps = 100;
 
   let topUp: DssVestTopUp;
   let paymentAdapterMock: NetworkPaymentAdapterMock;
@@ -85,7 +85,7 @@ describe("DssVestTopUp", function () {
       daiUsdPriceFeedMock.address,
       linkUsdPriceFeedMock.address,
       swapRouterMock.address,
-      slippageTolerancePercent,
+      slippageToleranceBps,
       uniswapPath
     );
 
@@ -157,7 +157,7 @@ describe("DssVestTopUp", function () {
         .div(10 ** usdFeedDecimals);
 
       const expectedLinkOutWithSlippage = linkAmountOut.sub(
-        linkAmountOut.mul(slippageTolerancePercent).div(100)
+        linkAmountOut.mul(slippageToleranceBps).div(10000)
       );
 
       expect(linkAmountOutMinimum).to.eq(expectedLinkOutWithSlippage);

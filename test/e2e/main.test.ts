@@ -144,7 +144,7 @@ describe("E2E", function () {
 
     // setup topup contract
     const uniswapPoolFee = 3000;
-    const slippageTolerancePercent = 2;
+    const slippageToleranceBps = 200;
     const uniswapPath = ethers.utils.solidityPack(
       ["address", "uint24", "address"],
       [daiToken.address, uniswapPoolFee, linkToken.address]
@@ -159,7 +159,7 @@ describe("E2E", function () {
       daiUsdPriceFeedAddress,
       linkUsdPriceFeedAddress,
       swapRouterAddress,
-      slippageTolerancePercent,
+      slippageToleranceBps,
       uniswapPath
     );
 

@@ -7,14 +7,13 @@ Maintains Maker protocol by poking oracles, liquidating vaults, managing the aut
 #### Main Contracts
 
 - [`DssCronKeeper.sol`](/contracts/DssCronKeeper.sol)
-  - Executes pending jobs from the [Sequencer](https://github.com/makerdao/dss-cron/) contract
+  - Executes pending jobs from the [Sequencer](https://github.com/makerdao/dss-cron/)
   - Triggers upkeep refunding when needed by calling `DssVestTopUp`
   - Registered as upkeep
 - [`DssVestTopUp.sol`](/contracts/DssVestTopUp.sol)
-  - Withdraws accumulated `DAI` from the [Vesting](https://github.com/makerdao/dss-vest/) contract via the `NetworkPaymentAdapter`
-  - Swaps `DAI` for `LINK` via [Uniswap V3](https://uniswap.org/docs/v3/)
-  - Transfers swapped `LINK` to the upkeep balance via `KeeperRegistry`
-  - Associated with a `DssCronKeeper` instance
+  - Withdraws accumulated DAI from the [Vest](https://github.com/makerdao/dss-vest/)
+  - Swaps DAI for LINK via Uniswap
+  - Transfers swapped LINK to the upkeep balance
 
 #### Architecture Overview
 
@@ -58,38 +57,38 @@ Copy the `.env.example` to `.env` file and make sure you've set all of the follo
 
 2. `DssCronKeeper` contract
 
-| Name           | Description                                                   |
-| -------------- | ------------------------------------------------------------- |
-| `SEQUENCER`    | Address of [Sequencer](https://github.com/makerdao/dss-cron/) |
-| `NETWORK_NAME` | Short name from the Sequencer network registry                |
+| Name           | Description                                      |
+| -------------- | ------------------------------------------------ |
+| `SEQUENCER`    | Address of `Sequencer`                           |
+| `NETWORK_NAME` | Short name from the `Sequencer` network registry |
 
 3. `DssVestTopUp` contract
 
 | Name                      | Description                                                                                                                                                                                         |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `UPKEEP_ID`               | Unique identifier of the registered upkeep for `DssCronKeeper`                                                                                                                                      |
-| `KEEPER_REGISTRY_V2`      | Address of `KeeperRegistryV2`                                                                                                                                                                       |
-| `DAI_TOKEN`               | Address of `DAI` token                                                                                                                                                                              |
-| `LINK_TOKEN`              | Address of `LINK` token                                                                                                                                                                             |
-| `NETWORK_PAYMENT_ADAPTER` | Address of [`NetworkPaymentAdapter`](https://github.com/makerdao/dss-cron/blob/master/src/NetworkPaymentAdapter.sol) for the keeper network                                                         |
-| `DAI_USD_PRICE_FEED`      | Chainlink price feed for the `DAI / USD` pair                                                                                                                                                       |
-| `LINK_USD_PRICE_FEED`     | Chainlink price feed for the `LINK / USD` pair                                                                                                                                                      |
+| `KEEPER_REGISTRY_V2`      | Address of `KeeperRegistry` V2                                                                                                                                                                      |
+| `DAI_TOKEN`               | Address of DAI token                                                                                                                                                                                |
+| `LINK_TOKEN`              | Address of LINK token                                                                                                                                                                               |
+| `NETWORK_PAYMENT_ADAPTER` | Address of `NetworkPaymentAdapter` for the keeper network                                                                                                                                           |
+| `DAI_USD_PRICE_FEED`      | Chainlink price feed for the DAI / USD pair                                                                                                                                                         |
+| `LINK_USD_PRICE_FEED`     | Chainlink price feed for the LINK / USD pair                                                                                                                                                        |
 | `SWAP_ROUTER_V3`          | Address of Uniswap V3 Router                                                                                                                                                                        |
-| `SLIPPAGE_TOLERANCE_BPS`  | [Price slippage](https://support.uniswap.org/hc/en-us/articles/8643879653261-What-is-Price-Slippage-) tolerance in basis points                                                                     |
+| `SLIPPAGE_TOLERANCE_BPS`  | Price slippage tolerance in basis points. Learn more [here](https://support.uniswap.org/hc/en-us/articles/8643879653261-What-is-Price-Slippage-).                                                   |
 | `UNISWAP_PATH`            | Uniswap V3 path for swapping DAI for LINK. Example: `DAI, 500, WETH, 3000, LINK`. Learn more [here](https://docs.uniswap.org/contracts/v3/guides/swaps/multihop-swaps#exact-input-multi-hop-swaps). |
 
 4. End-to-end test environment (currently running on a fork of Goerli testnet until the mainnet deployment of `KeeperRegistryV2`)
 
-| Name                                   | Description                                                                                                              |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `STAGING_SWAP_ROUTER`                  | Address of Uniswap V3 Router                                                                                             |
-| `STAGING_LINK_TOKEN`                   | Address of `LINK` token                                                                                                  |
-| `STAGING_PAYMENT_USD_PRICE_FEED`       | Chainlink price feed for the `DAI / USD` pair                                                                            |
-| `STAGING_LINK_USD_PRICE_FEED`          | Chainlink price feed for the `LINK / USD` pair                                                                           |
-| `STAGING_UNISWAP_V3_FACTORY`           | Uniswap V3 Factory address                                                                                               |
-| `STAGING_NONFUNGIBLE_POSITION_MANAGER` | Uniswap V3 Nonfungible Position Manager address                                                                          |
-| `STAGING_KEEPER_REGISTRY_LOGIC`        | Address of `KeeperRegistryLogic` used to deploy `KeeperRegistryV2`                                                       |
-| `STAGING_VOW`                          | Address of [`Vow`](https://docs.makerdao.com/smart-contract-modules/system-stabilizer-module/vow-detailed-documentation) |
+| Name                                   | Description                                                         |
+| -------------------------------------- | ------------------------------------------------------------------- |
+| `STAGING_SWAP_ROUTER`                  | Address of Uniswap V3 Router                                        |
+| `STAGING_LINK_TOKEN`                   | Address of LINK token                                               |
+| `STAGING_PAYMENT_USD_PRICE_FEED`       | Chainlink price feed for the DAI / USD pair                         |
+| `STAGING_LINK_USD_PRICE_FEED`          | Chainlink price feed for the LINK / USD pair                        |
+| `STAGING_UNISWAP_V3_FACTORY`           | Uniswap V3 Factory address                                          |
+| `STAGING_NONFUNGIBLE_POSITION_MANAGER` | Uniswap V3 Nonfungible Position Manager address                     |
+| `STAGING_KEEPER_REGISTRY_LOGIC`        | Address of `KeeperRegistryLogic` used to deploy `KeeperRegistry2_0` |
+| `STAGING_VOW`                          | Address of `Vow`                                                    |
 
 Note: All example addresses are the actual values for Ethereum Mainnet and the staging ones for Goerli testnet.
 
@@ -117,7 +116,7 @@ npx hardhat run scripts/deploy_keeper.ts --network <network>
 
 Note: After successful deployment, the contract must be [registered as new upkeep](https://docs.chain.link/chainlink-automation/register-upkeep/) to start performing pending jobs.
 
-2. Then deploy `DssVestTopUp.sol`
+2. Then deploy `DssVestTopUp.sol` by running the following.
 
 ```bash
 npx hardhat run scripts/deploy_topup.ts --network <network>

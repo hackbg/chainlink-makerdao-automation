@@ -39,6 +39,7 @@ if (
 
 describe("E2E", function () {
   const vestingPlanDuration = 1;
+  const networkName = formatBytes32String("test");
 
   let topUp: DssVestTopUp;
   let paymentAdapter: NetworkPaymentAdapter;
@@ -83,7 +84,6 @@ describe("E2E", function () {
 
     // setup cron keeper
     const DssCronKeeper = await ethers.getContractFactory("DssCronKeeper");
-    const networkName = formatBytes32String("test");
     const cronKeeper = await DssCronKeeper.deploy(
       sequencer.address,
       networkName
@@ -190,6 +190,9 @@ describe("E2E", function () {
 
   describe("Execute jobs", function () {
     it("should have executed job successfully", async function () {
+      const [workableBefore] = await job.workable(networkName);
+      expect(workableBefore).to.equal(true);
+
       await chainlink.keeperRegistryPerformUpkeep(
         registry,
         registrySigners,
@@ -197,12 +200,11 @@ describe("E2E", function () {
         chainlink.KeeperRegistryParams.F
       );
 
-      const [workable, reasonBytes] = await job.workable(
-        formatBytes32String("test")
-      );
+      const [workableAfter, reasonBytes] = await job.workable(networkName);
       const reason = parseBytes32String(reasonBytes.padEnd(66, "0"));
+
       expect(reason).to.equal("Timer hasn't elapsed");
-      expect(workable).to.equal(false);
+      expect(workableAfter).to.equal(false);
     });
 
     it("should reduce upkeep balance after job execution", async function () {

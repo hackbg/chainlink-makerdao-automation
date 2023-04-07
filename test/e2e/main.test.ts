@@ -15,8 +15,8 @@ import { KeeperRegistrar20 } from "../../typechain/KeeperRegistrar20";
 
 const { parseEther, parseBytes32String, formatBytes32String } = ethers.utils;
 
-const keeperRegistryLogicAddress = process.env.KEEPER_REGISTRY_LOGIC;
-const positionManagerAddress = process.env.NONFUNGIBLE_POSITION_MANAGER;
+const keeperRegistryLogicAddress = process.env.STAGING_KEEPER_REGISTRY_LOGIC;
+const positionManagerAddress = process.env.STAGING_NONFUNGIBLE_POSITION_MANAGER;
 const linkTokenAddress = process.env.STAGING_LINK_TOKEN;
 const linkUsdPriceFeedAddress = process.env.STAGING_LINK_USD_PRICE_FEED;
 const daiUsdPriceFeedAddress = process.env.STAGING_PAYMENT_USD_PRICE_FEED;

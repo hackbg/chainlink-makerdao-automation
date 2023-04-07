@@ -1,38 +1,38 @@
-# Chainlink Keepers Contracts for MakerDAO
+# Chainlink Automation Contracts for MakerDAO
 
-[Chainlink Keepers](https://docs.chain.link/docs/chainlink-keepers/introduction) implementation for [MIP63: Maker Keeper Network](https://forum.makerdao.com/t/mip63-maker-keeper-network/12091).
+[MIP63: Maker Keeper Network](https://forum.makerdao.com/t/mip63-maker-keeper-network/12091) implementation for the [Chainlink Automation Network](https://automation.chain.link).
 
 Maintains Maker protocol by poking oracles, liquidating vaults, managing the autoline, managing D3Ms, etc.
 
 #### Main Contracts
 
 - [`DssCronKeeper.sol`](/contracts/DssCronKeeper.sol)
-  - Executes pending jobs from [MakerDAO Sequencer](https://github.com/makerdao/dss-cron/)
+  - Executes pending jobs from the [Sequencer](https://github.com/makerdao/dss-cron/) contract
   - Triggers upkeep refunding when needed by calling `DssVestTopUp`
-  - Compatible with Chainlink Automation
+  - Registered as upkeep
 - [`DssVestTopUp.sol`](/contracts/DssVestTopUp.sol)
-  - Checks whether upkeep refund is viable
-  - Refunds upkeep by
-    - Withdrawing vested DAI via `NetworkPaymentAdapter` interface
-    - Swapping DAI for LINK and transfers to `KeeperRegistry`
+  - Withdraws accumulated `DAI` from the [Vesting](https://github.com/makerdao/dss-vest/) contract via the `NetworkPaymentAdapter`
+  - Swaps `DAI` for `LINK` via [Uniswap V3](https://uniswap.org/docs/v3/)
+  - Transfers swapped `LINK` to the upkeep balance via `KeeperRegistry`
+  - Associated with a `DssCronKeeper` instance
 
 #### Architecture Overview
 
 ```mermaid
 graph TD
- A(Chainlink Keepers Network) -->|calls upkeep| B(KeeperRegistry)
- B -->|check and perform| C(DssCronKeeper)
- C -->|trigger top up| D(DssVestTopUp)
- C -->|run jobs| E(DssCron)
- D -->|withdraw DAI| F(NetworkPaymentAdapter)
- D -->|check upkeep balance / add funds| B
- D -->|swap DAI for LINK| H(Uniswap Router)
- D -->I(Chainlink Price Feeds)
+ A(Chainlink Automation Network) -->|calls upkeep| B(KeeperRegistry)
+ B -->|checks and performs upkeep| C(DssCronKeeper)
+ C -->|triggers refund| D(DssVestTopUp)
+ C -->|runs jobs| E(DssCron)
+ D -->|withdraws DAI| F(NetworkPaymentAdapter)
+ D -->|checks upkeep balance / add funds| B
+ D -->|swaps DAI for LINK| H(Uniswap Router)
+ D -->|checks price for swap|I(Chainlink Price Feeds)
 ```
 
 ## Setup
 
-Clone the repo and install all dependencies:
+Clone the repo and install all dependencies.
 
 ```bash
 git clone git@github.com:hackbg/chainlink-makerdao-keepers.git
@@ -46,7 +46,7 @@ npm install
 
 ## Configuration
 
-Copy the `.env.example` to `.env` file and make sure you've set all of the following:
+Copy the `.env.example` to `.env` file and make sure you've set all of the following.
 
 1. Hardhat development environment
 
@@ -56,14 +56,14 @@ Copy the `.env.example` to `.env` file and make sure you've set all of the follo
 | `PRIVATE_KEY`       | Controls which account Hardhat uses           |
 | `ETHERSCAN_API_KEY` | Required to verify contract code on Etherscan |
 
-2. `DssCronKeeper`
+2. `DssCronKeeper` contract
 
 | Name           | Description                                                   |
 | -------------- | ------------------------------------------------------------- |
 | `SEQUENCER`    | Address of [Sequencer](https://github.com/makerdao/dss-cron/) |
 | `NETWORK_NAME` | Short name from the Sequencer network registry                |
 
-3. `DssVestTopUp`
+3. `DssVestTopUp` contract
 
 | Name                      | Description                                                                                                                                                                                         |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -78,30 +78,30 @@ Copy the `.env.example` to `.env` file and make sure you've set all of the follo
 | `SLIPPAGE_TOLERANCE_BPS`  | [Price slippage](https://support.uniswap.org/hc/en-us/articles/8643879653261-What-is-Price-Slippage-) tolerance in basis points                                                                     |
 | `UNISWAP_PATH`            | Uniswap V3 path for swapping DAI for LINK. Example: `DAI, 500, WETH, 3000, LINK`. Learn more [here](https://docs.uniswap.org/contracts/v3/guides/swaps/multihop-swaps#exact-input-multi-hop-swaps). |
 
-4. End-to-end tests (currently running on a fork of Goerli testnet until the mainnet deployment of KeeperRegistry v2)
+4. End-to-end test environment (currently running on a fork of Goerli testnet until the mainnet deployment of `KeeperRegistryV2`)
 
 | Name                                   | Description                                                                                                              |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | `STAGING_SWAP_ROUTER`                  | Address of Uniswap V3 Router                                                                                             |
-| `STAGING_LINK_TOKEN`                   | Address of ERC-20 token like LINK                                                                                        |
-| `STAGING_PAYMENT_USD_PRICE_FEED`       | Chainlink price feed for the DAI / USD pair                                                                              |
-| `STAGING_LINK_USD_PRICE_FEED`          | Chainlink price feed for the LINK / USD pair                                                                             |
+| `STAGING_LINK_TOKEN`                   | Address of `LINK` token                                                                                                  |
+| `STAGING_PAYMENT_USD_PRICE_FEED`       | Chainlink price feed for the `DAI / USD` pair                                                                            |
+| `STAGING_LINK_USD_PRICE_FEED`          | Chainlink price feed for the `LINK / USD` pair                                                                           |
 | `STAGING_UNISWAP_V3_FACTORY`           | Uniswap V3 Factory address                                                                                               |
-| `STAGING_NONFUNGIBLE_POSITION_MANAGER` | NonFungible Position Manager                                                                                             |
+| `STAGING_NONFUNGIBLE_POSITION_MANAGER` | Uniswap V3 Nonfungible Position Manager address                                                                          |
 | `STAGING_KEEPER_REGISTRY_LOGIC`        | Address of `KeeperRegistryLogic` used to deploy `KeeperRegistryV2`                                                       |
 | `STAGING_VOW`                          | Address of [`Vow`](https://docs.makerdao.com/smart-contract-modules/system-stabilizer-module/vow-detailed-documentation) |
 
-Note: All example values are the actual values for Ethereum Mainnet and the staging ones for Goerli testnet.
+Note: All example addresses are the actual values for Ethereum Mainnet and the staging ones for Goerli testnet.
 
 ## Test
 
-Run unit tests on the local Hardhat network:
+Run unit tests on the local Hardhat network.
 
 ```bash
 npm test
 ```
 
-For end-to-end testing:
+For end-to-end testing.
 
 ```bash
 npm run test:e2e
@@ -109,21 +109,19 @@ npm run test:e2e
 
 ## Deploy
 
-1. Run the following to deploy `DssVestCronKeeper.sol` to a network configured in Hardhat config:
+1. Run the following to deploy `DssVestCronKeeper.sol` to a network configured in Hardhat config.
 
 ```bash
 npx hardhat run scripts/deploy_keeper.ts --network <network>
 ```
 
-Note: After successful deployment, the contract must be [registered as new Upkeep](https://docs.chain.link/chainlink-automation/register-upkeep/) to start performing pending jobs.
+Note: After successful deployment, the contract must be [registered as new upkeep](https://docs.chain.link/chainlink-automation/register-upkeep/) to start performing pending jobs.
 
-2. Then deploy `DssVestTopUp.sol`:
+2. Then deploy `DssVestTopUp.sol`
 
 ```bash
 npx hardhat run scripts/deploy_topup.ts --network <network>
 ```
-
-The deployed contract must be initialized with `NetworkPaymentAdapter` address by calling `setPaymentAdapter` from the contract owner account.
 
 3. Finally, to enable auto refunding of the `DssCronKeeper` upkeep, call `setUpkeepRefunder(address)` and pass the address of the deployed `DssVestTopUp` contract.
 

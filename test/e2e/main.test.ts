@@ -239,7 +239,7 @@ describe("E2E", function () {
     });
 
     it("should refund upkeep when balance falls below threshold", async function () {
-      const { balance: initialBalance } = await registry.callStatic.getUpkeep(
+      const { balance: balanceBefore } = await registry.callStatic.getUpkeep(
         upkeepId
       );
       // increase threshold above balance so it has to refund upkeep
@@ -257,28 +257,31 @@ describe("E2E", function () {
         chainlink.KeeperRegistryParams.F
       );
 
-      const { balance } = await registry.callStatic.getUpkeep(upkeepId);
+      const { balance: balanceAfter } = await registry.callStatic.getUpkeep(
+        upkeepId
+      );
 
-      // get dai transferred from event params of payment adapter
-      const topUpEventABI = [
+      // get dai transferred from payment adapter
+      const { daiSent } = parseEventFromABI(tx, [
         "event TopUp(uint256 bufferSize, uint256 daiBalance, uint256 daiSent)",
-      ];
-      const { daiSent } = parseEventFromABI(tx, topUpEventABI);
+      ]);
 
-      // get swap event params from topup contract
-      const swappedDAIEventABI = [
+      // get dai/link swap details from topup contract
+      const { amountIn, amountOut } = parseEventFromABI(tx, [
         "event SwappedDaiForLink(uint256 amountIn, uint256 amountOut)",
-      ];
-      const { amountIn, amountOut } = parseEventFromABI(tx, swappedDAIEventABI);
+      ]);
 
-      // get total link spent from event
+      // check if dai sent from the payment adapter is equal to the amount swapped
+      expect(daiSent).eq(amountIn);
+
+      // get total link spent by upkeep
       const performUpkeepLinkSpent = tx.events?.find(
         (e) => e.event === "UpkeepPerformed"
       )?.args?.totalPayment;
 
-      expect(daiSent).eq(amountIn);
-      expect(initialBalance.add(amountOut).sub(performUpkeepLinkSpent)).eq(
-        balance
+      // check if balance is equal to initial balance + amount of link swapped - link spent for upkeep
+      expect(balanceBefore.add(amountOut).sub(performUpkeepLinkSpent)).eq(
+        balanceAfter
       );
     });
   });

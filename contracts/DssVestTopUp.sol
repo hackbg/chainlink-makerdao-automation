@@ -115,7 +115,7 @@ contract DssVestTopUp is IUpkeepRefunder, INetworkTreasury, Ownable {
     // ACTIONS
 
     /**
-     * @notice Swap the accumulated DAI balance for LINK and top up the upkeep balance
+     * @notice Withdraw accumulated funds and top up the upkeep balance
      */
     function refundUpkeep() external {
         uint256 daiReceived = paymentAdapter.topUp();
@@ -128,7 +128,7 @@ contract DssVestTopUp is IUpkeepRefunder, INetworkTreasury, Ownable {
     // GETTERS
 
     /**
-     * @notice Check if the upkeep balance can be topped up
+     * @notice Check if the upkeep balance should be topped up
      */
     function shouldRefundUpkeep() external view returns (bool) {
         return paymentAdapter.canTopUp();
@@ -136,6 +136,7 @@ contract DssVestTopUp is IUpkeepRefunder, INetworkTreasury, Ownable {
 
     /**
      * @notice Get the current upkeep balance in DAI
+     * @dev Called by the NetworkPaymentAdapter
      */
     function getBufferSize() external view returns (uint256 daiAmount) {
         uint96 balance = keeperRegistry.getUpkeep(upkeepId).balance;

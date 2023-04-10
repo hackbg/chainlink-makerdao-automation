@@ -165,18 +165,17 @@ contract DssVestTopUp is IUpkeepRefunder, INetworkTreasury, Ownable {
 
     function _convertLinkToDai(uint256 _linkAmount) internal view returns (uint256 daiAmount) {
         int256 decimals = int256(10 ** uint256(priceFeedDecimals));
-        int256 linkDaiPrice = _getDerivedPrice(linkUsdPriceFeed, daiUsdPriceFeed);
+        int256 linkDaiPrice = _getDerivedPrice(linkUsdPriceFeed, daiUsdPriceFeed, decimals);
         daiAmount = uint256((int256(_linkAmount) * linkDaiPrice) / decimals);
     }
 
     function _convertDaiToLink(uint256 _daiAmount) internal view returns (uint256 linkAmount) {
         int256 decimals = int256(10 ** uint256(priceFeedDecimals));
-        int256 daiLinkPrice = _getDerivedPrice(daiUsdPriceFeed, linkUsdPriceFeed);
+        int256 daiLinkPrice = _getDerivedPrice(daiUsdPriceFeed, linkUsdPriceFeed, decimals);
         linkAmount = uint256((int256(_daiAmount) * daiLinkPrice) / decimals);
     }
 
-    function _getDerivedPrice(address _base, address _quote) internal view returns (int256) {
-        int256 decimals = int256(10 ** uint256(priceFeedDecimals));
+    function _getDerivedPrice(address _base, address _quote, int256 decimals) internal view returns (int256) {
         (, int256 basePrice, , , ) = AggregatorV3Interface(_base).latestRoundData();
         (, int256 quotePrice, , , ) = AggregatorV3Interface(_quote).latestRoundData();
         return (basePrice * decimals) / quotePrice;

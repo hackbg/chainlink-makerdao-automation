@@ -34,8 +34,8 @@ graph TD
 Clone the repo and install all dependencies.
 
 ```bash
-git clone git@github.com:hackbg/chainlink-makerdao-keepers.git
-cd chainlink-makerdao-keepers
+git clone git@github.com:hackbg/chainlink-makerdao-automation.git
+cd chainlink-makerdao-automation
 
 git submodule init
 git submodule update

@@ -9,4 +9,5 @@ module.exports = {
     constantOptimizer: false,
     yul: true,
   },
+  skipFiles: ["/test", "/interfaces"],
 };

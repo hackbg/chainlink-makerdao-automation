@@ -71,6 +71,20 @@ describe("DssCronKeeper", function () {
       const [upkeepNeeded] = await keeper.callStatic.checkUpkeep(HashZero);
       expect(upkeepNeeded).to.eq(false);
     });
+
+    it("should return false if it's not the network's turn", async function () {
+      await sequencer.addNetwork(formatBytes32String("test2"), 100);
+      const isAnotherNetworkTurn = await sequencer.isMaster(
+        formatBytes32String("test2")
+      );
+      const [upkeepNeeded, performData] = await keeper.callStatic.checkUpkeep(
+        ethers.constants.HashZero
+      );
+
+      expect(isAnotherNetworkTurn).to.equal(true);
+      expect(upkeepNeeded).to.eq(false);
+      expect(performData).to.eq("0x");
+    });
   });
 
   describe("performUpkeep", function () {
@@ -121,6 +135,12 @@ describe("DssCronKeeper", function () {
       expect(oldSequencer).to.not.equal(newSequencer);
     });
 
+    it("should revert if sequencer address is zero address", async function () {
+      await expect(
+        keeper.setSequencer(ethers.constants.AddressZero)
+      ).to.be.revertedWith("invalid sequencer address");
+    });
+
     it("should not allow user to change sequencer", async function () {
       await expect(
         keeper.connect(user).setSequencer(job.address)
@@ -132,6 +152,12 @@ describe("DssCronKeeper", function () {
       await keeper.connect(owner).setNetwork(formatBytes32String("test3"));
       const newNetwork = await keeper.network();
       expect(newNetwork).to.not.equal(oldNetwork);
+    });
+
+    it("should revert if network name is blank", async function () {
+      await expect(
+        keeper.setNetwork(ethers.constants.HashZero)
+      ).to.be.revertedWith("invalid network");
     });
 
     it("should not allow user to change network name", async function () {

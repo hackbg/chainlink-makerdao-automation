@@ -102,7 +102,7 @@ contract DssCronKeeper is KeeperCompatibleInterface, Ownable {
     }
 
     function setNetwork(bytes32 _network) public onlyOwner {
-        require(_network.length > 0, "invalid network");
+        require(_network != bytes32(0), "invalid network");
         network = _network;
     }
 

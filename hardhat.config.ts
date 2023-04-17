@@ -77,10 +77,17 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,
   },
+  typechain: {
+    outDir: "typechain",
+    target: "ethers-v4",
+  },
 };
+if (!config.networks) {
+  throw new Error(`No config networks!`);
+}
 
 if (process.env.FORK_ENABLED === "true") {
-  config.networks!.hardhat = {
+  config.networks.hardhat = {
     forking: {
       url: process.env.GOERLI_URL || "",
       blockNumber: parseInt(process.env.BLOCK_NUMBER || ""),

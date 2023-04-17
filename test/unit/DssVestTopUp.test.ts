@@ -3,16 +3,14 @@ import { ethers } from "hardhat";
 import { AbiCoder } from "@ethersproject/abi";
 import { utils, Wallet } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import {
-  DssVestTopUp,
-  DssVestTopUp__factory as DssVestTopUpFactory,
-  ERC20PresetMinterPauser,
-  KeeperRegistryMock,
-  MockV3Aggregator,
-  MockV3Aggregator__factory as MockV3AggregatorFactory,
-  NetworkPaymentAdapterMock,
-  SwapRouterMock,
-} from "../../typechain";
+import { DssVestTopUp } from "../../typechain/DssVestTopUp";
+import { NetworkPaymentAdapterMock } from "../../typechain/NetworkPaymentAdapterMock";
+import { ERC20PresetMinterPauser } from "../../typechain/ERC20PresetMinterPauser";
+import { KeeperRegistryMock } from "../../typechain/KeeperRegistryMock";
+import { SwapRouterMock } from "../../typechain/SwapRouterMock";
+import { DssVestTopUp__factory as DssVestTopUpFactory } from "../../typechain/factories/DssVestTopUp__factory";
+import { MockV3Aggregator__factory as MockV3AggregatorFactory } from "../../typechain/factories/MockV3Aggregator__factory";
+import { MockV3Aggregator } from "../../typechain/MockV3Aggregator";
 
 const { parseEther, parseUnits, toUtf8Bytes, keccak256 } = ethers.utils;
 
@@ -40,8 +38,12 @@ describe("DssVestTopUp", function () {
   let owner: SignerWithAddress;
 
   before(async function () {
-    DssVestTopUp = await ethers.getContractFactory("DssVestTopUp");
-    MockV3Aggregator = await ethers.getContractFactory("MockV3Aggregator");
+    DssVestTopUp = (await ethers.getContractFactory(
+      "DssVestTopUp"
+    )) as unknown as DssVestTopUpFactory;
+    MockV3Aggregator = (await ethers.getContractFactory(
+      "MockV3Aggregator"
+    )) as unknown as MockV3AggregatorFactory;
   });
 
   beforeEach(async function () {
@@ -50,24 +52,32 @@ describe("DssVestTopUp", function () {
     const ERC20PresetMinterPauser = await ethers.getContractFactory(
       "ERC20PresetMinterPauser"
     );
-    daiToken = await ERC20PresetMinterPauser.deploy("Test DAI", "DAI");
+    daiToken = (await ERC20PresetMinterPauser.deploy(
+      "Test DAI",
+      "DAI"
+    )) as unknown as ERC20PresetMinterPauser;
 
     // setup link token
-    linkToken = await ERC20PresetMinterPauser.deploy("Test Chainlink", "LINK");
+    linkToken = (await ERC20PresetMinterPauser.deploy(
+      "Test Chainlink",
+      "LINK"
+    )) as unknown as ERC20PresetMinterPauser;
 
     // setup chainlink keeper registry mock
     const KeeperRegistryMock = await ethers.getContractFactory(
       "KeeperRegistryMock"
     );
-    keeperRegistryMock = await KeeperRegistryMock.deploy(linkToken.address);
+    keeperRegistryMock = (await KeeperRegistryMock.deploy(
+      linkToken.address
+    )) as unknown as KeeperRegistryMock;
     await keeperRegistryMock.setUpkeepBalance(initialUpkeepBalance);
 
     // setup uniswap router mock
     const SwapRouterMock = await ethers.getContractFactory("SwapRouterMock");
-    swapRouterMock = await SwapRouterMock.deploy(
+    swapRouterMock = (await SwapRouterMock.deploy(
       daiToken.address,
       linkToken.address
-    );
+    )) as unknown as SwapRouterMock;
 
     // setup price feed mocks
     daiUsdPriceFeedMock = await MockV3Aggregator.deploy(
@@ -83,13 +93,14 @@ describe("DssVestTopUp", function () {
     const NetworkPaymentAdapterMock = await ethers.getContractFactory(
       "NetworkPaymentAdapterMock"
     );
-    paymentAdapterMock = await NetworkPaymentAdapterMock.deploy(
+    paymentAdapterMock = (await NetworkPaymentAdapterMock.deploy(
       daiToken.address,
       topUpAmount
-    );
+    )) as unknown as NetworkPaymentAdapterMock;
 
     // setup topup contract
-    topUp = await DssVestTopUp.deploy(
+    const DssVestTopUp = await ethers.getContractFactory("DssVestTopUp");
+    topUp = (await DssVestTopUp.deploy(
       fakeUpkeepId,
       keeperRegistryMock.address,
       daiToken.address,
@@ -100,7 +111,7 @@ describe("DssVestTopUp", function () {
       swapRouterMock.address,
       slippageToleranceBps,
       uniswapPath
-    );
+    )) as unknown as DssVestTopUp;
 
     // set topup contract as treasury in payment adapter
     paymentAdapterMock.setTreasury(topUp.address);

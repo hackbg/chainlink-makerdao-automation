@@ -3,15 +3,15 @@ import { ethers, network } from "hardhat";
 import * as chainlink from "../utils/chainlink-automation";
 import { setupPool } from "../utils/uniswap";
 import { parseEventFromABI } from "../utils/events";
-import { Wallet } from "ethers";
+import { Wallet, Event, Contract } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { DssVestTopUp } from "../../typechain/DssVestTopUp";
 import { NetworkPaymentAdapter } from "../../typechain/NetworkPaymentAdapter";
 import { SampleJob } from "../../typechain/SampleJob";
 import { ERC20PresetMinterPauser } from "../../typechain/ERC20PresetMinterPauser";
 import { LinkTokenMock } from "../../typechain/LinkTokenMock";
-import { KeeperRegistry20 } from "../../typechain/KeeperRegistry20";
-import { KeeperRegistrar20 } from "../../typechain/KeeperRegistrar20";
+import { KeeperRegistry2_0 as KeeperRegistry20 } from "../../typechain/KeeperRegistry2_0";
+import { KeeperRegistrar2_0 as KeeperRegistrar20 } from "../../typechain/KeeperRegistrar2_0";
 
 const { parseEther, parseBytes32String, formatBytes32String } = ethers.utils;
 
@@ -54,13 +54,18 @@ describe("E2E", function () {
 
   before(async function () {
     [owner] = await ethers.getSigners();
-    linkToken = await ethers.getContractAt("LinkTokenMock", linkTokenAddress);
+    linkToken = (await ethers.getContractAt(
+      "LinkTokenMock",
+      linkTokenAddress
+    )) as unknown as LinkTokenMock;
     registrySigners = chainlink.getRegistrySigners();
   });
 
   beforeEach(async function () {
     // setup dai token
-    const ERC20 = await ethers.getContractFactory("ERC20PresetMinterPauser");
+    const ERC20 = (await ethers.getContractFactory(
+      "ERC20PresetMinterPauser"
+    )) as unknown as ERC20PresetMinterPauser;
     daiToken = await ERC20.deploy("Test DAI", "DAI");
     await daiToken.mint(owner.address, parseEther("100"));
 
@@ -68,7 +73,10 @@ describe("E2E", function () {
     const Sequencer = await ethers.getContractFactory("Sequencer");
     const sequencer = await Sequencer.deploy();
     const SampleJob = await ethers.getContractFactory("SampleJob");
-    job = await SampleJob.deploy(sequencer.address, 100);
+    job = (await SampleJob.deploy(
+      sequencer.address,
+      100
+    )) as unknown as SampleJob;
     await sequencer.addJob(job.address);
 
     // setup vest
@@ -124,11 +132,11 @@ describe("E2E", function () {
     const vestingPlanId = 1;
     const bufferMax = parseEther("1");
     const minPayment = parseEther("1");
-    paymentAdapter = await NetworkPaymentAdapter.deploy(
+    paymentAdapter = (await NetworkPaymentAdapter.deploy(
       dssVest.address,
       daiJoin.address,
       vowAddress
-    );
+    )) as unknown as NetworkPaymentAdapter;
     await paymentAdapter["file(bytes32,uint256)"](
       formatBytes32String("vestId"),
       vestingPlanId
@@ -150,7 +158,7 @@ describe("E2E", function () {
       [daiToken.address, uniswapPoolFee, linkToken.address]
     );
     const DssVestTopUp = await ethers.getContractFactory("DssVestTopUp");
-    topUp = await DssVestTopUp.deploy(
+    topUp = (await DssVestTopUp.deploy(
       upkeepId,
       registry.address,
       daiToken.address,
@@ -161,7 +169,7 @@ describe("E2E", function () {
       swapRouterAddress,
       slippageToleranceBps,
       uniswapPath
-    );
+    )) as unknown as DssVestTopUp;
 
     // set topup contract as treasury in payment adapter
     await paymentAdapter["file(bytes32,address)"](
@@ -224,9 +232,12 @@ describe("E2E", function () {
     beforeEach(async function () {
       const poolLinkTokenLiquidity = parseEther("100");
       const poolDaiTokenLiquidity = parseEther("100");
+      const linkTokenContract = linkToken as unknown as Contract;
+      const daiTokenContract = daiToken as unknown as Contract;
+
       await setupPool(
-        linkToken,
-        daiToken,
+        linkTokenContract,
+        daiTokenContract,
         owner,
         poolLinkTokenLiquidity,
         poolDaiTokenLiquidity,
@@ -276,7 +287,7 @@ describe("E2E", function () {
 
       // get total link spent by upkeep
       const performUpkeepLinkSpent = tx.events?.find(
-        (e) => e.event === "UpkeepPerformed"
+        (e: Event) => e.event === "UpkeepPerformed"
       )?.args?.totalPayment;
 
       // check if balance is equal to initial balance + amount of link swapped - link spent for upkeep

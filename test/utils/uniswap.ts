@@ -23,11 +23,11 @@ export const TICK_SPACINGS = {
   [FeeAmount.HIGH]: 200,
 };
 
-export const getMinTick = (tickSpacing: number) =>
+export const getMinTick = (tickSpacing: number): number =>
   Math.ceil(-887272 / tickSpacing) * tickSpacing;
-export const getMaxTick = (tickSpacing: number) =>
+export const getMaxTick = (tickSpacing: number): number =>
   Math.floor(887272 / tickSpacing) * tickSpacing;
-export const getMaxLiquidityPerTick = (tickSpacing: number) =>
+export const getMaxLiquidityPerTick = (tickSpacing: number): BigNumber =>
   BigNumber.from(2)
     .pow(128)
     .sub(1)
@@ -54,7 +54,7 @@ export async function setupPool(
   token1Liquidity: BigNumber,
   uniswapV3FactoryAddress: string,
   positionManagerAddress: string
-) {
+): Promise<IUniswapV3Pool> {
   const oneToOneRatio = encodePriceSqrt(BigNumber.from(1), BigNumber.from(1));
 
   const pool = await findOrCreatePool(
@@ -112,7 +112,7 @@ export async function findOrCreatePool(
       poolAddress,
       IUniswapV3PoolABI,
       provider
-    ) as IUniswapV3Pool;
+    ) as unknown as IUniswapV3Pool;
   } else {
     pool = await createPool(token0, token1, ratio, provider, uniswapFactory);
   }

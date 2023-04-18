@@ -1,11 +1,17 @@
-import { BigNumber, Wallet, constants } from "ethers";
+import {
+  BigNumber,
+  Wallet,
+  constants,
+  Event,
+  type ContractReceipt,
+} from "ethers";
+import { JsonRpcProvider } from "@ethersproject/providers";
 import { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import {
-  KeeperRegistry20,
-  KeeperRegistrar20,
-  LinkTokenMock,
-} from "../../typechain";
+import { LinkTokenMock } from "../../typechain/LinkTokenMock";
+import { KeeperRegistry2_0 as KeeperRegistry20 } from "../../typechain/KeeperRegistry2_0";
+import { KeeperRegistrar2_0 as KeeperRegistrar20 } from "../../typechain/KeeperRegistrar2_0";
+import { EncodeConfig, ExtraParams, Upkeep } from "./types";
 
 const { HashZero } = ethers.constants;
 const { formatBytes32String, Interface } = ethers.utils;
@@ -33,7 +39,10 @@ export async function setupChainlinkAutomation(
   owner: SignerWithAddress,
   linkToken: LinkTokenMock,
   keeperRegistryLogicAddress: string
-) {
+): Promise<{
+  registrar: KeeperRegistrar20;
+  registry: KeeperRegistry20;
+}> {
   const registry = await deployRegistry(keeperRegistryLogicAddress);
 
   const registrar = await deployRegistrar(owner, linkToken, registry);
@@ -55,14 +64,14 @@ export async function setupChainlinkAutomation(
     to: registrySigner.address,
     value: ethers.utils.parseEther("1.0"),
   });
-  return { registry, registrar };
+  return { registrar, registry };
 }
 
 async function deployRegistry(keeperRegistryLogicAddress: string) {
   const Registry = await ethers.getContractFactory("KeeperRegistry2_0");
   const registry = (await Registry.deploy(
     keeperRegistryLogicAddress
-  )) as KeeperRegistry20;
+  )) as unknown as KeeperRegistry20;
   return registry;
 }
 
@@ -80,17 +89,17 @@ async function deployRegistrar(
     KeeperRegistrarParams.AUTO_APPROVE_MAX_ALLOWED,
     registry.address,
     KeeperRegistrarParams.MIN_UPKEEP_SPEND
-  )) as KeeperRegistrar20;
+  )) as unknown as KeeperRegistrar20;
   return registrar;
 }
 
 function encodeReport(
-  upkeeps: any,
+  upkeeps: Upkeep[],
   gasWeiReport = gasWei,
   linkEthReport = linkEth
 ) {
-  const upkeepIds = upkeeps.map((u: any) => u.Id);
-  const performDataTuples = upkeeps.map((u: any) => [
+  const upkeepIds = upkeeps.map((u) => u.Id);
+  const performDataTuples = upkeeps.map((u) => [
     u.checkBlockNum,
     u.checkBlockHash,
     u.performData,
@@ -101,7 +110,11 @@ function encodeReport(
   );
 }
 
-function signReport(reportContext: string[], report: any, signers: Wallet[]) {
+function signReport(
+  reportContext: string[],
+  report: string,
+  signers: Wallet[]
+) {
   const reportDigest = ethers.utils.keccak256(report);
   const packedArgs = ethers.utils.solidityPack(
     ["bytes32", "bytes32[3]"],
@@ -121,7 +134,7 @@ function signReport(reportContext: string[], report: any, signers: Wallet[]) {
   };
 }
 
-function encodeConfig(config: any) {
+function encodeConfig(config: EncodeConfig) {
   return ethers.utils.defaultAbiCoder.encode(
     [
       // eslint-disable-next-line no-multi-str
@@ -182,13 +195,13 @@ async function configRegistry(
 async function transmit(
   registry: KeeperRegistry20,
   transmitter: Wallet,
-  upkeepIds: any,
+  upkeepIds: string[],
   signers: Wallet[],
   numSigners: number,
-  extraParams?: any,
-  performData?: any,
-  checkBlockNum?: any,
-  checkBlockHash?: any
+  extraParams?: ExtraParams,
+  performData?: string,
+  checkBlockNum?: number,
+  checkBlockHash?: string
 ) {
   const latestBlock = await ethers.provider.getBlock("latest");
   const configDigest = (await registry.getState()).state.latestConfigDigest;
@@ -228,7 +241,7 @@ export async function keeperRegistryPerformUpkeep(
   registrySigners: Wallet[],
   upkeepId: string,
   f: number
-) {
+): Promise<ContractReceipt> {
   const registryCheckUpkeep = await registry
     .connect(constants.AddressZero)
     .callStatic.checkUpkeep(upkeepId);
@@ -244,29 +257,31 @@ export async function keeperRegistryPerformUpkeep(
     [upkeepId],
     registrySigners,
     f + 1,
-    null,
+    undefined,
     performData
   );
   return await tx.wait();
 }
 
-export function getRegistrySigners() {
+export function getRegistrySigners(): Wallet[] {
   const signers: Wallet[] = [];
+  const provider = ethers.provider as JsonRpcProvider;
+
   const signer1 = new ethers.Wallet(
     "0x7777777000000000000000000000000000000000000000000000000000000001"
-  ).connect(ethers.provider);
+  ).connect(provider);
   const signer2 = new ethers.Wallet(
     "0x7777777000000000000000000000000000000000000000000000000000000002"
-  ).connect(ethers.provider);
+  ).connect(provider);
   const signer3 = new ethers.Wallet(
     "0x7777777000000000000000000000000000000000000000000000000000000003"
-  ).connect(ethers.provider);
+  ).connect(provider);
   const signer4 = new ethers.Wallet(
     "0x7777777000000000000000000000000000000000000000000000000000000004"
-  ).connect(ethers.provider);
+  ).connect(provider);
   const signer5 = new ethers.Wallet(
     "0x7777777000000000000000000000000000000000000000000000000000000005"
-  ).connect(ethers.provider);
+  ).connect(provider);
 
   signers.push(signer1, signer2, signer3, signer4, signer5);
 
@@ -310,7 +325,7 @@ export async function registerUpkeep(
   // get upkeep id
   const registerRc = await registerTx.wait();
   const registrarEvents = registerRc.events?.filter(
-    (e) => e.address === keeperRegistrarAddress
+    (e: Event) => e.address === keeperRegistrarAddress
   );
   const registrationApprovedEvent = registrarEvents && registrarEvents[1];
   const upkeepIdHex = registrationApprovedEvent?.topics[2];

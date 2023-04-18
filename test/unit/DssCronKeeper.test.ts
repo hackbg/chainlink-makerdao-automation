@@ -1,12 +1,10 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import {
-  DssCronKeeper,
-  DssVestTopUpMock,
-  SampleJob,
-  Sequencer,
-} from "../../typechain";
+import { DssCronKeeper } from "../../typechain/DssCronKeeper";
+import { Sequencer } from "../../typechain/Sequencer";
+import { SampleJob } from "../../typechain/SampleJob";
+import { DssVestTopUpMock } from "../../typechain/DssVestTopUpMock";
 
 const { HashZero } = ethers.constants;
 const { formatBytes32String } = ethers.utils;
@@ -27,24 +25,28 @@ describe("DssCronKeeper", function () {
 
   beforeEach(async function () {
     const Sequencer = await ethers.getContractFactory("Sequencer");
-    sequencer = await Sequencer.deploy();
+    sequencer = (await Sequencer.deploy()) as unknown as Sequencer;
     await sequencer.addNetwork(formatBytes32String("test"), 1);
 
     const SampleJob = await ethers.getContractFactory("SampleJob");
-    job = await SampleJob.deploy(sequencer.address, 100);
+    job = (await SampleJob.deploy(
+      sequencer.address,
+      100
+    )) as unknown as SampleJob;
     await sequencer.addJob(job.address);
     runJobEncoded = iface.encodeFunctionData("runJob", [job.address, "0x"]);
 
     const DssCronKeeper = await ethers.getContractFactory("DssCronKeeper");
-    keeper = await DssCronKeeper.deploy(
+    keeper = (await DssCronKeeper.deploy(
       sequencer.address,
       formatBytes32String("test")
-    );
+    )) as unknown as DssCronKeeper;
 
     const DssVestTopUpMock = await ethers.getContractFactory(
       "DssVestTopUpMock"
     );
-    topUpMock = await DssVestTopUpMock.deploy();
+    topUpMock =
+      (await DssVestTopUpMock.deploy()) as unknown as DssVestTopUpMock;
     await keeper.setUpkeepRefunder(topUpMock.address);
   });
 

@@ -18,8 +18,8 @@
     "@nomiclabs/hardhat-etherscan": "^3.0.1",
     "@nomiclabs/hardhat-waffle": "^2.0.2",
     "@openzeppelin/contracts": "^4.8.2",
-    "@typechain/ethers-v5": "^7.2.0",
-    "@typechain/hardhat": "^2.3.1",
+    "@typechain/ethers-v4": "^7.0.0",
+    "@typechain/hardhat": "^6.1.2",
     "@types/chai": "^4.3.0",
     "@types/mocha": "^9.1.0",
     "@types/node": "^12.20.46",
@@ -38,15 +38,20 @@
     "eslint-plugin-prettier": "^3.4.1",
     "eslint-plugin-promise": "^5.2.0",
     "ethereum-waffle": "^3.4.0",
-    "ethers": "^5.5.4",
-    "hardhat": "^2.8.4",
+    "hardhat": "^2.13.1",
     "hardhat-gas-reporter": "^1.0.8",
     "prettier": "^2.5.1",
     "prettier-plugin-solidity": "^1.0.0-beta.19",
     "solhint": "^3.3.7",
-    "solidity-coverage": "^0.7.20",
+    "solidity-coverage": "^0.8.1",
     "ts-node": "^10.5.0",
-    "typechain": "^5.2.0",
-    "typescript": "^4.5.5"
+    "typechain": "^8.1.0",
+    "typescript": "~4.7.4"
+  },
+  "overrides": {
+    "@typechain/ethers-v4": {
+      "typechain": "8.1.1",
+      "ethers": "5.5.2"
+    }
   }
 }

@@ -4,7 +4,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import {
   KeeperRegistry20,
   KeeperRegistrar20,
-  LinkTokenMock,
+  LinkToken,
 } from "../../typechain";
 
 const { HashZero } = ethers.constants;
@@ -31,10 +31,17 @@ export const KeeperRegistryParams = {
 
 export async function setupChainlinkAutomation(
   owner: SignerWithAddress,
-  linkToken: LinkTokenMock,
-  keeperRegistryLogicAddress: string
+  linkToken: LinkToken,
+  linkNativeFeed: string,
+  fastGasFeed: string
 ) {
-  const registry = await deployRegistry(keeperRegistryLogicAddress);
+  const logic = await deployKeeperRegistryLogic(
+    linkToken,
+    linkNativeFeed,
+    fastGasFeed
+  );
+
+  const registry = await deployRegistry(logic.address);
 
   const registrar = await deployRegistrar(owner, linkToken, registry);
 
@@ -58,6 +65,23 @@ export async function setupChainlinkAutomation(
   return { registry, registrar };
 }
 
+async function deployKeeperRegistryLogic(
+  linkToken: LinkToken,
+  linkNativeFeed: string,
+  fastGasFeed: string
+) {
+  const KeeperRegistryLogic = await ethers.getContractFactory(
+    "KeeperRegistryLogic2_0"
+  );
+  const keeperRegistryLogic = (await KeeperRegistryLogic.deploy(
+    0,
+    linkToken.address,
+    linkNativeFeed,
+    fastGasFeed
+  )) as KeeperRegistry20;
+  return keeperRegistryLogic;
+}
+
 async function deployRegistry(keeperRegistryLogicAddress: string) {
   const Registry = await ethers.getContractFactory("KeeperRegistry2_0");
   const registry = (await Registry.deploy(
@@ -68,7 +92,7 @@ async function deployRegistry(keeperRegistryLogicAddress: string) {
 
 async function deployRegistrar(
   owner: SignerWithAddress,
-  linkToken: LinkTokenMock,
+  linkToken: LinkToken,
   registry: KeeperRegistry20
 ) {
   const KeeperRegistrar = await ethers.getContractFactory("KeeperRegistrar2_0");
@@ -275,7 +299,7 @@ export function getRegistrySigners() {
 
 export async function registerUpkeep(
   contractAddress: string,
-  linkTokenAddress: string,
+  linkToken: LinkToken,
   keeperRegistrarAddress: string,
   adminAddress: string,
   adminEmail: string,
@@ -300,8 +324,6 @@ export async function registerUpkeep(
     initialFunding,
     adminAddress,
   ]);
-  const LinkTokenMock = await ethers.getContractFactory("LinkTokenMock");
-  const linkToken = LinkTokenMock.attach(linkTokenAddress);
   const registerTx = await linkToken.transferAndCall(
     keeperRegistrarAddress,
     initialFunding,

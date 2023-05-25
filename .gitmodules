@@ -4,3 +4,6 @@
 [submodule "vendor/dss-vest"]
 	path = vendor/dss-vest
 	url = https://github.com/makerdao/dss-vest
+[submodule "vendor/chainlink"]
+	path = vendor/chainlink
+	url = https://github.com/smartcontractkit/chainlink

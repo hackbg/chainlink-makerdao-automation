@@ -77,20 +77,17 @@ Copy the `.env.example` to `.env` file and make sure you've set all of the follo
 | `SLIPPAGE_TOLERANCE_BPS`  | Price slippage tolerance in basis points. Learn more [here](https://support.uniswap.org/hc/en-us/articles/8643879653261-What-is-Price-Slippage-).                                                   |
 | `UNISWAP_PATH`            | Uniswap V3 path for swapping DAI for LINK. Example: `DAI, 500, WETH, 3000, LINK`. Learn more [here](https://docs.uniswap.org/contracts/v3/guides/swaps/multihop-swaps#exact-input-multi-hop-swaps). |
 
-4. End-to-end test environment (currently running on a fork of Goerli testnet until the mainnet deployment of `KeeperRegistryV2`)
+4. End-to-end test environment (optional)
 
-| Name                                   | Description                                                         |
-| -------------------------------------- | ------------------------------------------------------------------- |
-| `STAGING_SWAP_ROUTER`                  | Address of Uniswap V3 Router                                        |
-| `STAGING_LINK_TOKEN`                   | Address of LINK token                                               |
-| `STAGING_PAYMENT_USD_PRICE_FEED`       | Chainlink price feed for the DAI / USD pair                         |
-| `STAGING_LINK_USD_PRICE_FEED`          | Chainlink price feed for the LINK / USD pair                        |
-| `STAGING_UNISWAP_V3_FACTORY`           | Uniswap V3 Factory address                                          |
-| `STAGING_NONFUNGIBLE_POSITION_MANAGER` | Uniswap V3 Nonfungible Position Manager address                     |
-| `STAGING_KEEPER_REGISTRY_LOGIC`        | Address of `KeeperRegistryLogic` used to deploy `KeeperRegistry2_0` |
-| `STAGING_VOW`                          | Address of `Vow`                                                    |
+| Name                           | Description                                     |
+| ------------------------------ | ----------------------------------------------- |
+| `LINK_NATIVE_FEED`             | Address of the LINK/Native price feed           |
+| `FAST_GAS_FEED`                | Address of the Fast Gas price feed              |
+| `UNISWAP_V3_FACTORY`           | Uniswap V3 Factory address                      |
+| `NONFUNGIBLE_POSITION_MANAGER` | Uniswap V3 Nonfungible Position Manager address |
+| `VOW`                          | Address of `Vow`                                |
 
-Note: All example addresses are the actual values for Ethereum Mainnet and the staging ones for Goerli testnet.
+Note: Example contract addresses are for Ethereum mainnet.
 
 ## Test
 

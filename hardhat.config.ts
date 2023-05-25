@@ -56,6 +56,10 @@ const config: HardhatUserConfig = {
         version: "0.6.12",
         settings: compilerSettings,
       },
+      {
+        version: "0.4.11",
+        settings: compilerSettings,
+      },
     ],
   },
   networks: {
@@ -82,7 +86,7 @@ const config: HardhatUserConfig = {
 if (process.env.FORK_ENABLED === "true") {
   config.networks!.hardhat = {
     forking: {
-      url: process.env.GOERLI_URL || "",
+      url: process.env.MAINNET_URL || "",
       blockNumber: parseInt(process.env.BLOCK_NUMBER || ""),
     },
   };

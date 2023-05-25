@@ -9,25 +9,25 @@ import { DssVestTopUp } from "../../typechain/DssVestTopUp";
 import { NetworkPaymentAdapter } from "../../typechain/NetworkPaymentAdapter";
 import { SampleJob } from "../../typechain/SampleJob";
 import { ERC20PresetMinterPauser } from "../../typechain/ERC20PresetMinterPauser";
-import { LinkTokenMock } from "../../typechain/LinkTokenMock";
+import { LinkToken } from "../../typechain/LinkToken";
 import { KeeperRegistry20 } from "../../typechain/KeeperRegistry20";
 import { KeeperRegistrar20 } from "../../typechain/KeeperRegistrar20";
 
 const { parseEther, parseBytes32String, formatBytes32String } = ethers.utils;
 
-const keeperRegistryLogicAddress = process.env.STAGING_KEEPER_REGISTRY_LOGIC;
-const positionManagerAddress = process.env.STAGING_NONFUNGIBLE_POSITION_MANAGER;
-const linkTokenAddress = process.env.STAGING_LINK_TOKEN;
-const linkUsdPriceFeedAddress = process.env.STAGING_LINK_USD_PRICE_FEED;
-const daiUsdPriceFeedAddress = process.env.STAGING_PAYMENT_USD_PRICE_FEED;
-const swapRouterAddress = process.env.STAGING_SWAP_ROUTER;
-const uniswapV3FactoryAddress = process.env.STAGING_UNISWAP_V3_FACTORY;
-const vowAddress = process.env.STAGING_VOW;
+const linkNativeFeed = process.env.LINK_NATIVE_FEED;
+const fastGasFeed = process.env.FAST_GAS_FEED;
+const positionManagerAddress = process.env.NONFUNGIBLE_POSITION_MANAGER;
+const linkUsdPriceFeedAddress = process.env.LINK_USD_PRICE_FEED;
+const daiUsdPriceFeedAddress = process.env.DAI_USD_PRICE_FEED;
+const swapRouterAddress = process.env.SWAP_ROUTER_V3;
+const uniswapV3FactoryAddress = process.env.UNISWAP_V3_FACTORY;
+const vowAddress = process.env.VOW;
 
 if (
-  !keeperRegistryLogicAddress ||
+  !linkNativeFeed ||
+  !fastGasFeed ||
   !positionManagerAddress ||
-  !linkTokenAddress ||
   !linkUsdPriceFeedAddress ||
   !daiUsdPriceFeedAddress ||
   !swapRouterAddress ||
@@ -46,7 +46,7 @@ describe("E2E", function () {
   let job: SampleJob;
   let upkeepId: string;
   let daiToken: ERC20PresetMinterPauser;
-  let linkToken: LinkTokenMock;
+  let linkToken: LinkToken;
   let registry: KeeperRegistry20;
   let registrar: KeeperRegistrar20;
   let registrySigners: Wallet[];
@@ -54,11 +54,14 @@ describe("E2E", function () {
 
   before(async function () {
     [owner] = await ethers.getSigners();
-    linkToken = await ethers.getContractAt("LinkTokenMock", linkTokenAddress);
     registrySigners = chainlink.getRegistrySigners();
   });
 
   beforeEach(async function () {
+    // setup link token
+    const LinkToken = await ethers.getContractFactory("LinkToken");
+    linkToken = await LinkToken.deploy();
+
     // setup dai token
     const ERC20 = await ethers.getContractFactory("ERC20PresetMinterPauser");
     daiToken = await ERC20.deploy("Test DAI", "DAI");
@@ -94,19 +97,20 @@ describe("E2E", function () {
     ({ registry, registrar } = await chainlink.setupChainlinkAutomation(
       owner,
       linkToken,
-      keeperRegistryLogicAddress
+      linkNativeFeed,
+      fastGasFeed
     ));
 
     // register cron keeper as upkeep
     const upkeepName = "test123";
     const upkeepAdminEmail = "test@example.com";
     const upkeepGasLimit = 500000;
-    const upkeepInitialFunding = parseEther("1");
+    const upkeepInitialFunding = parseEther("100");
     const upkeepCheckData = "0x";
     const upkeepOffchainConfig = "0x";
     upkeepId = await chainlink.registerUpkeep(
       cronKeeper.address,
-      linkToken.address,
+      linkToken,
       registrar.address,
       owner.address,
       upkeepAdminEmail,
@@ -245,7 +249,7 @@ describe("E2E", function () {
       // increase threshold above balance so it has to refund upkeep
       await paymentAdapter["file(bytes32,uint256)"](
         formatBytes32String("bufferMax"),
-        parseEther("100")
+        parseEther("1000")
       );
       expect(await topUp.shouldRefundUpkeep(), "refund not needed").to.eq(true);
 

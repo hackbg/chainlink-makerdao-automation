@@ -141,8 +141,8 @@ async function addLiquidity(
   const timestampBefore = blockBefore.timestamp;
 
   await nonFungiblePositionManager.mint({
-    token0: linkToken.address,
-    token1: paymentToken.address,
+    token0: paymentToken.address,
+    token1: linkToken.address,
     fee: FeeAmount.MEDIUM,
     tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
     tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),

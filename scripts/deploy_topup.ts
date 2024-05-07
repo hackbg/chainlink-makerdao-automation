@@ -7,7 +7,7 @@ import { ethers } from "hardhat";
 
 const {
   UPKEEP_ID,
-  KEEPER_REGISTRY_V2,
+  KEEPER_REGISTRY_V2_1,
   DAI_TOKEN,
   LINK_TOKEN,
   NETWORK_PAYMENT_ADAPTER,
@@ -28,7 +28,7 @@ async function main() {
 
   if (
     !UPKEEP_ID ||
-    !KEEPER_REGISTRY_V2 ||
+    !KEEPER_REGISTRY_V2_1 ||
     !DAI_TOKEN ||
     !LINK_TOKEN ||
     !NETWORK_PAYMENT_ADAPTER ||
@@ -50,7 +50,7 @@ async function main() {
   const DssVestTopUp = await ethers.getContractFactory("DssVestTopUp");
   const topUp = await DssVestTopUp.deploy(
     UPKEEP_ID,
-    KEEPER_REGISTRY_V2,
+    KEEPER_REGISTRY_V2_1,
     DAI_TOKEN,
     LINK_TOKEN,
     NETWORK_PAYMENT_ADAPTER,

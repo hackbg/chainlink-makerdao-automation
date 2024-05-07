@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "compile": "npx hardhat compile",
-    "coverage": "npx hardhat coverage --network hardhat --testfiles 'test/unit/*.test.ts'",
-    "test:e2e": "FORK_ENABLED=true BLOCK_NUMBER=17322361 npx hardhat test test/E2E/main.test.ts",
+    "coverage": "npx hardhat coverage --testfiles 'test/unit/*.test.ts'",
+    "test:e2e": "FORK_ENABLED=true BLOCK_NUMBER=19738444 npx hardhat test test/E2E/main.test.ts",
     "test": "npx hardhat test test/unit/*.test.ts"
   },
   "keywords": [],
@@ -15,6 +15,7 @@
   "devDependencies": {
     "@chainlink/contracts": "^0.6.1",
     "@chainlink/token": "^1.1.0",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.10",
     "@nomiclabs/hardhat-ethers": "^2.0.5",
     "@nomiclabs/hardhat-etherscan": "^3.0.1",
     "@nomiclabs/hardhat-waffle": "^2.0.2",
@@ -40,12 +41,12 @@
     "eslint-plugin-promise": "^5.2.0",
     "ethereum-waffle": "^3.4.0",
     "ethers": "^5.5.4",
-    "hardhat": "^2.8.4",
+    "hardhat": "^2.11.0",
     "hardhat-gas-reporter": "^1.0.8",
     "prettier": "^2.5.1",
     "prettier-plugin-solidity": "^1.0.0-beta.19",
     "solhint": "^3.3.7",
-    "solidity-coverage": "^0.7.20",
+    "solidity-coverage": "^0.8.0",
     "ts-node": "^10.5.0",
     "typechain": "^5.2.0",
     "typescript": "^4.5.5"

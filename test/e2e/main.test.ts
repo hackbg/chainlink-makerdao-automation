@@ -1,22 +1,23 @@
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
-import * as chainlink from "../utils/chainlink-automation";
+import { impersonateAccount } from "@nomicfoundation/hardhat-network-helpers";
 import { setupPool } from "../utils/uniswap";
 import { parseEventFromABI } from "../utils/events";
-import { Wallet } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { DssVestTopUp } from "../../typechain/DssVestTopUp";
+import { DssCronKeeper } from "../../typechain/DssCronKeeper";
 import { NetworkPaymentAdapter } from "../../typechain/NetworkPaymentAdapter";
 import { SampleJob } from "../../typechain/SampleJob";
 import { ERC20PresetMinterPauser } from "../../typechain/ERC20PresetMinterPauser";
+import { IKeeperRegistryMaster } from "../../typechain/IKeeperRegistryMaster";
 import { LinkToken } from "../../typechain/LinkToken";
-import { KeeperRegistry20 } from "../../typechain/KeeperRegistry20";
-import { KeeperRegistrar20 } from "../../typechain/KeeperRegistrar20";
 
 const { parseEther, parseBytes32String, formatBytes32String } = ethers.utils;
 
-const linkNativeFeed = process.env.LINK_NATIVE_FEED;
-const fastGasFeed = process.env.FAST_GAS_FEED;
+const linkTokenAddress = process.env.LINK_TOKEN;
+const accountWihLink = process.env.EOA_WITH_LINK;
+const automationRegistrarAddress = process.env.AUTOMATION_REGISTRAR_V2_1;
+const keeperRegistryAddress = process.env.KEEPER_REGISTRY_V2_1;
 const positionManagerAddress = process.env.NONFUNGIBLE_POSITION_MANAGER;
 const linkUsdPriceFeedAddress = process.env.LINK_USD_PRICE_FEED;
 const daiUsdPriceFeedAddress = process.env.DAI_USD_PRICE_FEED;
@@ -25,8 +26,10 @@ const uniswapV3FactoryAddress = process.env.UNISWAP_V3_FACTORY;
 const vowAddress = process.env.VOW;
 
 if (
-  !linkNativeFeed ||
-  !fastGasFeed ||
+  !linkTokenAddress ||
+  !accountWihLink ||
+  !automationRegistrarAddress ||
+  !keeperRegistryAddress ||
   !positionManagerAddress ||
   !linkUsdPriceFeedAddress ||
   !daiUsdPriceFeedAddress ||
@@ -43,25 +46,19 @@ describe("E2E", function () {
 
   let topUp: DssVestTopUp;
   let paymentAdapter: NetworkPaymentAdapter;
+  let cronKeeper: DssCronKeeper;
   let job: SampleJob;
+  let keeperRegistry: IKeeperRegistryMaster;
   let upkeepId: string;
   let daiToken: ERC20PresetMinterPauser;
   let linkToken: LinkToken;
-  let registry: KeeperRegistry20;
-  let registrar: KeeperRegistrar20;
-  let registrySigners: Wallet[];
   let owner: SignerWithAddress;
 
   before(async function () {
     [owner] = await ethers.getSigners();
-    registrySigners = chainlink.getRegistrySigners();
   });
 
   beforeEach(async function () {
-    // setup link token
-    const LinkToken = await ethers.getContractFactory("LinkToken");
-    linkToken = await LinkToken.deploy();
-
     // setup dai token
     const ERC20 = await ethers.getContractFactory("ERC20PresetMinterPauser");
     daiToken = await ERC20.deploy("Test DAI", "DAI");
@@ -87,39 +84,55 @@ describe("E2E", function () {
 
     // setup cron keeper
     const DssCronKeeper = await ethers.getContractFactory("DssCronKeeper");
-    const cronKeeper = await DssCronKeeper.deploy(
-      sequencer.address,
-      networkName
-    );
+    cronKeeper = await DssCronKeeper.deploy(sequencer.address, networkName);
     await sequencer.addNetwork(networkName, 1);
 
-    // setup chainlink automation contracts
-    ({ registry, registrar } = await chainlink.setupChainlinkAutomation(
-      owner,
-      linkToken,
-      linkNativeFeed,
-      fastGasFeed
-    ));
+    // setup link token
+    linkToken = await ethers.getContractAt("LinkToken", linkTokenAddress);
 
-    // register cron keeper as upkeep
-    const upkeepName = "test123";
-    const upkeepAdminEmail = "test@example.com";
-    const upkeepGasLimit = 500000;
-    const upkeepInitialFunding = parseEther("100");
-    const upkeepCheckData = "0x";
-    const upkeepOffchainConfig = "0x";
-    upkeepId = await chainlink.registerUpkeep(
-      cronKeeper.address,
-      linkToken,
-      registrar.address,
-      owner.address,
-      upkeepAdminEmail,
-      upkeepName,
-      upkeepGasLimit,
-      upkeepOffchainConfig,
-      upkeepInitialFunding,
-      upkeepCheckData
+    // setup keeper registry
+    keeperRegistry = await ethers.getContractAt(
+      "IKeeperRegistryMaster",
+      keeperRegistryAddress
     );
+
+    // setup automation registrar
+    const automationRegistrar = await ethers.getContractAt(
+      "AutomationRegistrar2_1",
+      automationRegistrarAddress
+    );
+
+    // fund default account with link
+    await impersonateAccount(accountWihLink);
+    const accountWihLinkSigner = await ethers.getSigner(accountWihLink);
+    const data = linkToken.interface.encodeFunctionData("transfer", [
+      owner.address,
+      parseEther("10"),
+    ]);
+    await accountWihLinkSigner.sendTransaction({
+      to: linkToken.address,
+      data,
+    });
+
+    // register upkeep
+    const upkeepFundAmount = parseEther("5");
+    await linkToken.approve(automationRegistrarAddress, upkeepFundAmount);
+    const upkeepParams = {
+      name: "test123",
+      encryptedEmail: "0x00",
+      upkeepContract: cronKeeper.address,
+      gasLimit: 500000,
+      adminAddress: owner.address,
+      triggerType: 0,
+      checkData: "0x00",
+      triggerConfig: "0xdeadbeef",
+      offchainConfig: "0x00",
+      amount: upkeepFundAmount,
+    };
+    const registerTx = await automationRegistrar.registerUpkeep(upkeepParams);
+    const registerRc = await registerTx.wait();
+    upkeepId = registerRc.events.find((e) => e.event === "RegistrationApproved")
+      .args.upkeepId;
 
     // setup network payment adapter
     const NetworkPaymentAdapter = await ethers.getContractFactory(
@@ -156,7 +169,7 @@ describe("E2E", function () {
     const DssVestTopUp = await ethers.getContractFactory("DssVestTopUp");
     topUp = await DssVestTopUp.deploy(
       upkeepId,
-      registry.address,
+      keeperRegistryAddress,
       daiToken.address,
       linkToken.address,
       paymentAdapter.address,
@@ -192,17 +205,37 @@ describe("E2E", function () {
     await cronKeeper.setUpkeepRefunder(topUp.address);
   });
 
+  describe("KeeperRegistry", () => {
+    it("should check upkeep", async () => {
+      const [upkeepNeeded, performData] = await keeperRegistry
+        .connect(ethers.constants.AddressZero)
+        .callStatic["checkUpkeep(uint256)"](upkeepId);
+
+      expect(upkeepNeeded).to.eq(true);
+      expect(performData).to.not.eq("0x");
+    });
+
+    it("should perform upkeep", async () => {
+      const [, performData] = await keeperRegistry
+        .connect(ethers.constants.AddressZero)
+        .callStatic["checkUpkeep(uint256)"](upkeepId);
+
+      const [success, gasUsed] = await keeperRegistry
+        .connect(ethers.constants.AddressZero)
+        .callStatic.simulatePerformUpkeep(upkeepId, performData);
+
+      expect(success).to.eq(true);
+      expect(gasUsed).to.be.gt(0);
+    });
+  });
+
   describe("Execute jobs", function () {
-    it("should have executed job successfully", async function () {
+    it("should execute job successfully", async function () {
       const [workableBefore] = await job.workable(networkName);
       expect(workableBefore).to.equal(true);
 
-      await chainlink.keeperRegistryPerformUpkeep(
-        registry,
-        registrySigners,
-        upkeepId,
-        chainlink.KeeperRegistryParams.F
-      );
+      const [, performData] = await cronKeeper.callStatic.checkUpkeep("0x00");
+      await cronKeeper.performUpkeep(performData);
 
       const [workableAfter, reasonBytes] = await job.workable(networkName);
       const reason = parseBytes32String(reasonBytes.padEnd(66, "0"));
@@ -210,24 +243,12 @@ describe("E2E", function () {
       expect(reason).to.equal("Timer hasn't elapsed");
       expect(workableAfter).to.equal(false);
     });
-
-    it("should reduce upkeep balance after job execution", async function () {
-      const { balance: preBalance } = await registry.getUpkeep(upkeepId);
-      await chainlink.keeperRegistryPerformUpkeep(
-        registry,
-        registrySigners,
-        upkeepId,
-        chainlink.KeeperRegistryParams.F
-      );
-      const { balance: postBalance } = await registry.getUpkeep(upkeepId);
-      expect(preBalance).to.be.gt(postBalance);
-    });
   });
 
   describe("Refund upkeep", function () {
     beforeEach(async function () {
-      const poolLinkTokenLiquidity = parseEther("100");
-      const poolDaiTokenLiquidity = parseEther("100");
+      const poolLinkTokenLiquidity = parseEther("10");
+      const poolDaiTokenLiquidity = parseEther("10");
       await setupPool(
         linkToken,
         daiToken,
@@ -243,9 +264,8 @@ describe("E2E", function () {
     });
 
     it("should refund upkeep when balance falls below threshold", async function () {
-      const { balance: balanceBefore } = await registry.callStatic.getUpkeep(
-        upkeepId
-      );
+      const { balance: balanceBefore } =
+        await keeperRegistry.callStatic.getUpkeep(upkeepId);
       // increase threshold above balance so it has to refund upkeep
       await paymentAdapter["file(bytes32,uint256)"](
         formatBytes32String("bufferMax"),
@@ -253,40 +273,28 @@ describe("E2E", function () {
       );
       expect(await topUp.shouldRefundUpkeep(), "refund not needed").to.eq(true);
 
-      // do the thing
-      const tx = await chainlink.keeperRegistryPerformUpkeep(
-        registry,
-        registrySigners,
-        upkeepId,
-        chainlink.KeeperRegistryParams.F
-      );
+      const [, performData] = await cronKeeper.callStatic.checkUpkeep("0x00");
+      const performTx = await cronKeeper.performUpkeep(performData);
+      const performRc = await performTx.wait();
 
-      const { balance: balanceAfter } = await registry.callStatic.getUpkeep(
-        upkeepId
-      );
+      const { balance: balanceAfter } =
+        await keeperRegistry.callStatic.getUpkeep(upkeepId);
 
       // get dai transferred from payment adapter
-      const { daiSent } = parseEventFromABI(tx, [
+      const { daiSent } = parseEventFromABI(performRc, [
         "event TopUp(uint256 bufferSize, uint256 daiBalance, uint256 daiSent)",
       ]);
 
       // get dai/link swap details from topup contract
-      const { amountIn, amountOut } = parseEventFromABI(tx, [
+      const { amountIn, amountOut } = parseEventFromABI(performRc, [
         "event SwappedDaiForLink(uint256 amountIn, uint256 amountOut)",
       ]);
 
       // check if dai sent from the payment adapter is equal to the amount swapped
       expect(daiSent).eq(amountIn);
 
-      // get total link spent by upkeep
-      const performUpkeepLinkSpent = tx.events?.find(
-        (e) => e.event === "UpkeepPerformed"
-      )?.args?.totalPayment;
-
-      // check if balance is equal to initial balance + amount of link swapped - link spent for upkeep
-      expect(balanceBefore.add(amountOut).sub(performUpkeepLinkSpent)).eq(
-        balanceAfter
-      );
+      // check if balance is equal to initial balance + amount of link swapped
+      expect(balanceBefore.add(amountOut)).eq(balanceAfter);
     });
   });
 });

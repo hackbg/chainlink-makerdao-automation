@@ -67,7 +67,7 @@ Copy the `.env.example` to `.env` file and make sure you've set all of the follo
 | Name                      | Description                                                                                                                                                                                         |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `UPKEEP_ID`               | Unique identifier of the registered upkeep for `DssCronKeeper`                                                                                                                                      |
-| `KEEPER_REGISTRY_V2`      | Address of `KeeperRegistry` V2                                                                                                                                                                      |
+| `KEEPER_REGISTRY_V2_1`      | Address of `KeeperRegistry` V2.1                                                                                                                                                                    |
 | `DAI_TOKEN`               | Address of DAI token                                                                                                                                                                                |
 | `LINK_TOKEN`              | Address of LINK token                                                                                                                                                                               |
 | `NETWORK_PAYMENT_ADAPTER` | Address of `NetworkPaymentAdapter` for the keeper network                                                                                                                                           |
@@ -79,13 +79,13 @@ Copy the `.env.example` to `.env` file and make sure you've set all of the follo
 
 4. End-to-end test environment (optional)
 
-| Name                           | Description                                     |
-| ------------------------------ | ----------------------------------------------- |
-| `LINK_NATIVE_FEED`             | Address of the LINK/Native price feed           |
-| `FAST_GAS_FEED`                | Address of the Fast Gas price feed              |
-| `UNISWAP_V3_FACTORY`           | Uniswap V3 Factory address                      |
-| `NONFUNGIBLE_POSITION_MANAGER` | Uniswap V3 Nonfungible Position Manager address |
-| `VOW`                          | Address of `Vow`                                |
+| Name                           | Description                                                                                                                              |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `AUTOMATION_REGISTRAR_V2_1`      | Address of Automation Registrar V2.1 contract                                                                                            |
+| `EOA_WITH_LINK`                | Address of the Externally Owned Account (EOA) with at least 50 LINK balance before the block specified when running the tests on a fork. |
+| `UNISWAP_V3_FACTORY`           | Uniswap V3 Factory address                                                                                                               |
+| `NONFUNGIBLE_POSITION_MANAGER` | Uniswap V3 Nonfungible Position Manager address                                                                                          |
+| `VOW`                          | Address of `Vow`                                                                                                                         |
 
 Note: Example contract addresses are for Ethereum mainnet.
 

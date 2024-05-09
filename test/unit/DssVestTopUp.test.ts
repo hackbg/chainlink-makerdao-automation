@@ -421,6 +421,13 @@ describe("DssVestTopUp", function () {
       ).to.be.revertedWith('InvalidParam("KeeperRegistry")');
     });
 
+    it("should allow the updated keeper registry to spend link token", async function () {
+      await topUp.setKeeperRegistry(randomAddress.address);
+      expect(
+        await linkToken.allowance(topUp.address, randomAddress.address)
+      ).to.eq(ethers.constants.MaxUint256);
+    });
+
     it("should set upkeep id", async function () {
       const newUpkeepId = 1;
       await topUp.setUpkeepId(newUpkeepId);

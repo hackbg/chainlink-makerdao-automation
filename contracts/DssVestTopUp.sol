@@ -192,6 +192,7 @@ contract DssVestTopUp is IUpkeepRefunder, INetworkTreasury, Ownable {
     function setKeeperRegistry(address _keeperRegistry) external onlyOwner {
         if (_keeperRegistry == address(0)) revert InvalidParam("KeeperRegistry");
         keeperRegistry = KeeperRegistryLike(_keeperRegistry);
+        TransferHelper.safeApprove(linkToken, _keeperRegistry, type(uint256).max);
         emit KeeperRegistrySet(_keeperRegistry);
     }
 

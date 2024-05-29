@@ -428,6 +428,13 @@ describe("DssVestTopUp", function () {
       ).to.eq(ethers.constants.MaxUint256);
     });
 
+    it("should reset link token allowance to the old keeper registry", async function () {
+      await topUp.setKeeperRegistry(randomAddress.address);
+      expect(
+        await linkToken.allowance(topUp.address, keeperRegistryMock.address)
+      ).to.eq(0);
+    });
+
     it("should set upkeep id", async function () {
       const newUpkeepId = 1;
       await topUp.setUpkeepId(newUpkeepId);
